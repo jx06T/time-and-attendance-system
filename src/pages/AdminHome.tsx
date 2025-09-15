@@ -1,78 +1,120 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
-import NumericKeypad from '../components/NumericKeypad';
+import useLocalStorage from '../hooks/useLocalStorage'; // 引入我們建立的自訂 Hook
 
 const AdminHomePage = () => {
-  const [input, setInput] = useState('');
-  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = async () => {
-    if (input.length < 3) {
-      setError('請輸入完整的班級座號 (例如 10101)');
-      return;
-    }
+  // 使用 useLocalStorage Hook 來自動同步 state 和 localStorage
+  const [allUsers, setAllUsers] = useLocalStorage<UserProfile[]>('allUsers', []);
+  const [lastUpdated, setLastUpdated] = useLocalStorage<string | null>('usersLastUpdated', null);
+
+  // 從 Firestore 獲取最新資料並更新 state 和 localStorage 的函式
+  const handleUpdateUsers = async () => {
     setLoading(true);
-    setError('');
-    setFoundUser(null);
-
-    const classId = input.substring(0, 3);
-    const seatNo = input.substring(3);
-
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('classId', '==', classId), where('seatNo', '==', seatNo));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(collection(db, 'users'));
+      const users = querySnapshot.docs.map(doc => {
+        // 確保返回的物件符合 UserProfile 型別
+        const data = doc.data();
+        return {
+          id: doc.id,
+          uid: data.uid,
+          name: data.name,
+          classId: data.classId,
+          seatNo: data.seatNo,
+          email: data.email,
+          studentId: data.studentId,
+        };
+      });
 
-      if (querySnapshot.empty) {
-        setError('找不到此使用者');
-      } else {
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-        if (userData.email) {
-          setFoundUser({ id: userDoc.id, ...userData } as UserProfile);
-        } else {
-          setError('此使用者資料缺少 email，無法進行操作。');
-        }
-      }
-    } catch (err) {
-      setError('查詢時發生錯誤');
-      console.error(err);
+      const now = new Date();
+      // 直接呼叫 Hook 返回的 setValue 函式，它會自動處理 state 更新和 localStorage 寫入
+      setAllUsers(users);
+      setLastUpdated(now.toISOString());
+
+    } catch (error) {
+      console.error("更新使用者列表失敗:", error);
+      // 可以在此添加 UI 上的錯誤提示
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
+  // 使用 useMemo 進行客戶端篩選，以優化性能
+  const filteredUsers = useMemo(() => {
+    // Trim 掉使用者輸入的前後空白
+    const cleanedSearchTerm = searchTerm.trim().toLowerCase();
+
+    if (!cleanedSearchTerm) {
+      return allUsers; // 如果沒有輸入，顯示所有人
+    }
+    return allUsers.filter(user =>
+      // 進行不分大小寫的比對
+      user.classId.toLowerCase().includes(cleanedSearchTerm) ||
+      user.name.toLowerCase().includes(cleanedSearchTerm) ||
+      user.seatNo.toLowerCase().includes(cleanedSearchTerm)
+    );
+  }, [searchTerm, allUsers]);
+
+
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-full px-4">
       <h2 className="text-2xl mb-4">管理員操作面板</h2>
-      <div className="w-full max-w-xs p-4 border border-blue-400 rounded mb-4 text-center h-12 text-2xl">
-        {input || '班級座號'}
+
+      {/* 更新和篩選區域 */}
+      <div className="w-full max-w-lg p-4 border border-gray-700 bg-gray-800 rounded mb-4 flex flex-col sm:flex-row items-center gap-4">
+        <input
+          type="text"
+          placeholder="輸入班級、姓名或座號進行篩選..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-auto flex-grow p-2 bg-gray-700 border border-gray-600 rounded text-white"
+        />
+        <button
+          onClick={handleUpdateUsers}
+          disabled={loading}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? '更新中...' : '手動更新列表'}
+        </button>
       </div>
-      <NumericKeypad
-        onInput={(val) => setInput(prev => prev + val)}
-        onDelete={() => setInput(prev => prev.slice(0, -1))}
-        onClear={() => { setInput(''); setFoundUser(null); setError(''); }}
-      />
-      <button onClick={handleSearch} disabled={loading} className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-8 rounded w-full max-w-xs">
-        {loading ? '搜尋中...' : '搜尋'}
-      </button>
-      {error && <p className="mt-4 text-red-400">{error}</p>}
-      {foundUser && (
-        <div className="mt-6 p-4 border border-green-400 rounded w-full max-w-xs text-center">
-          <p className="text-lg">找到使用者：</p>
-          <button
-            onClick={() => navigate(`/admin/record/${foundUser.email}`)}
-            className="text-3xl text-yellow-300 hover:underline"
-          >
-            {foundUser.name}
-          </button>
-        </div>
+      {lastUpdated && (
+        <p className="text-sm text-gray-400 mb-4">
+          列表上次更新於: {new Date(lastUpdated).toLocaleString()}
+        </p>
       )}
+
+      {/* 使用者列表 */}
+      <div className="w-full max-w-lg">
+        {loading && allUsers.length === 0 ? (
+          <p className="text-center text-gray-500 mt-8">正在從伺服器載入使用者列表...</p>
+        ) : filteredUsers.length > 0 ? (
+          <ul className="space-y-2">
+            {filteredUsers.map(user => (
+              <li key={user.id}
+                onClick={() => navigate(`/admin/record/${user.email}`)}
+                className="p-3 bg-gray-800 rounded flex justify-between items-center cursor-pointer hover:bg-gray-700 transition-colors"
+              >
+                <div>
+                  <p className="font-bold text-white">{user.name}</p>
+                  <p className="text-sm text-gray-400">班級: {user.classId} - 座號: {user.seatNo}</p>
+                </div>
+                <span className="text-blue-400 text-2xl font-thin">&rarr;</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center text-gray-500 mt-8">
+            {allUsers.length > 0 ? '沒有匹配的結果。' : '本地沒有使用者資料，請點擊“手動更新列表”從伺服器載入。'}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

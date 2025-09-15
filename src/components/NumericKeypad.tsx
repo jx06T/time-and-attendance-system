@@ -12,7 +12,7 @@ const KeypadButton: React.FC<{ onClick: () => void, children: React.ReactNode, c
     </button>
 );
 
-const NumericKeypad: React.FC<NumericKeypadProps> = ({ onInput, onDelete, onClear }) => {
+function NumericKeypad({ onInput, onDelete, onClear }: NumericKeypadProps) {
     const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
     return (

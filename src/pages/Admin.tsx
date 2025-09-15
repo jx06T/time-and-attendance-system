@@ -114,20 +114,60 @@ const AdminPage = () => {
     };
 
     const processCsvData = async (data: any[]) => {
-        // ... (省略與您提供的匯入頁面完全相同的 processCsvData 邏輯) ...
-        const batch = writeBatch(db);
-        const usersRef = collection(db, "users");
-        data.forEach(row => {
-            const { studentId, email, classId, seatNo, name } = row;
-            if (!studentId || !email || !name) return;
-            const newUserDocRef = doc(usersRef);
-            batch.set(newUserDocRef, { studentId, email: email.toLowerCase(), classId: classId || '', seatNo: seatNo || '', name, uid: null });
-        });
+        if (!data.length) {
+            // ... handle empty data
+            return;
+        }
+        setImporting(true);
+
         try {
+            const batch = writeBatch(db);
+            const usersRef = collection(db, "users");
+
+            // 1. 为了避免在循环中查询，我们先一次性获取所有现有用户的 email
+            const existingUsersSnapshot = await getDocs(query(usersRef));
+            const emailToIdMap = new Map<string, string>();
+            existingUsersSnapshot.forEach(doc => {
+                emailToIdMap.set(doc.data().email, doc.id);
+            });
+
+            // 2. 遍历 CSV 的每一行
+            data.forEach(row => {
+                const { studentId, email, classId, seatNo, name } = row;
+                if (!studentId || !email || !name) return;
+
+                const lowerCaseEmail = email.toLowerCase();
+                const existingUserId = emailToIdMap.get(lowerCaseEmail);
+
+                const userData = {
+                    studentId,
+                    email: lowerCaseEmail,
+                    classId: classId || '',
+                    seatNo: seatNo || '',
+                    name,
+                    // 如果是更新，我们不应该重置 uid
+                    // set({ merge: true }) 可以帮我们处理
+                };
+
+                if (existingUserId) {
+                    // 3a. 如果 email 已存在，我们更新现有文档
+                    const userDocRef = doc(db, "users", existingUserId);
+                    // 使用 set 和 merge:true 可以用新数据覆盖旧字段，同时保留 uid 等不变的字段
+                    batch.set(userDocRef, userData, { merge: true });
+                } else {
+                    // 3b. 如果 email 不存在，我们创建新文档 (保留 uid: null)
+                    const newUserDocRef = doc(usersRef);
+                    batch.set(newUserDocRef, { ...userData, uid: null });
+                }
+            });
+
             await batch.commit();
-            setImportSuccess(`成功匯入 ${data.length} 筆初始員工資料！`);
+            setImportSuccess(`成功处理 ${data.length} 笔资料！`);
+
         } catch (err: any) {
-            setImportError(`寫入資料庫時發生錯誤: ${err.message}`);
+            setImportError(`写入资料库时发生错误: ${err.message}`);
+        } finally {
+            setImporting(false);
         }
     };
 

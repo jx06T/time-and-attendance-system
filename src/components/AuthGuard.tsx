@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export const AuthGuard: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+export function AuthGuard({ children }: { children: React.ReactElement }) {
     const { user, loading } = useAuth();
 
     if (loading) {

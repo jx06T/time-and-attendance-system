@@ -15,12 +15,12 @@ export const useAdminStatus = () => {
                 setLoading(false);
                 return;
             }
-            
+
             setLoading(true);
             try {
                 const adminDocRef = doc(db, 'admins', user.uid);
                 const adminDocSnap = await getDoc(adminDocRef);
-                
+
                 setIsAdmin(adminDocSnap.exists());
 
             } catch (error) {
