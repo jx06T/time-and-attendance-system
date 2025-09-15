@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, setDoc, updateDoc, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TimeRecord, UserProfile } from '../types';
 
-const DailyRecordPage = () => {
-    const { userId } = useParams<{ userId: string }>();
+// 這個頁面現在是【管理員專用】，用來為特定員工打卡或修改紀錄
+const RecordPage = () => {
+    // 變更 1: URL 參數從 userId 改為 userEmail
+    const { userEmail } = useParams<{ userEmail: string }>(); 
+    const navigate = useNavigate();
+
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [record, setRecord] = useState<TimeRecord | null>(null);
     const [loading, setLoading] = useState(true);
@@ -15,43 +19,53 @@ const DailyRecordPage = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!userId) return;
+            if (!userEmail) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
-            // 1. 取得使用者資料
-            const userDocRef = doc(db, 'users', userId);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                setUserProfile({ uid: userId, ...userDocSnap.data() } as UserProfile);
+
+            // 變更 2: 根據 email 查詢使用者資料，而不是用 doc ID
+            const userQuery = query(collection(db, 'users'), where('email', '==', userEmail));
+            const userSnapshot = await getDocs(userQuery);
+            
+            if (!userSnapshot.empty) {
+                const userDoc = userSnapshot.docs[0];
+                // 這裡的 'id' 是 Firestore 自動生成的文件 ID，和 uid 不同
+                setUserProfile({ id: userDoc.id, ...userDoc.data() } as UserProfile);
             }
 
-            // 2. 取得今天的打卡紀錄
+            // 變更 3: 根據 userEmail 和 date 取得今天的打卡紀錄
             const recordsRef = collection(db, 'timeRecords');
-            const q = query(recordsRef, where('userId', '==', userId), where('date', '==', todayStr));
-            const querySnapshot = await getDocs(q);
+            const recordQuery = query(recordsRef, where('userEmail', '==', userEmail), where('date', '==', todayStr));
+            const recordSnapshot = await getDocs(recordQuery);
 
-            if (!querySnapshot.empty) {
-                const doc = querySnapshot.docs[0];
-                setRecord({ id: doc.id, ...doc.data() } as TimeRecord);
+            if (!recordSnapshot.empty) {
+                const recordDoc = recordSnapshot.docs[0];
+                setRecord({ id: recordDoc.id, ...recordDoc.data() } as TimeRecord);
             } else {
                 setRecord(null); // 確保沒有紀錄時是 null
             }
             setLoading(false);
         };
         fetchData();
-    }, [userId, todayStr]);
+    }, [userEmail, todayStr]);
 
     const handleCheckIn = async () => {
-        if (!userId) return;
-        const newRecord: TimeRecord = {
-            userId,
+        if (!userEmail) return;
+
+        // 變更 4: 寫入的紀錄使用 userEmail 欄位
+        const newRecord: Partial<TimeRecord> = {
+            userEmail, // 使用 userEmail
             checkIn: Timestamp.now(),
             checkOut: null,
             date: todayStr,
         };
-        // 使用 userId 和 date 組成一個可預測的文檔 ID
-        const recordDocRef = doc(db, 'timeRecords', `${userId}_${todayStr}`);
+
+        // 變更 5: 使用 userEmail 和 date 組成一個可預測的文件 ID
+        const recordDocRef = doc(db, 'timeRecords', `${userEmail}_${todayStr}`);
         await setDoc(recordDocRef, newRecord);
-        setRecord({ id: recordDocRef.id, ...newRecord });
+        setRecord({ id: recordDocRef.id, ...newRecord } as TimeRecord);
     };
 
     const handleCheckOut = async () => {
@@ -61,20 +75,21 @@ const DailyRecordPage = () => {
         setRecord(prev => prev ? { ...prev, checkOut: Timestamp.now() } : null);
     };
 
-    // TODO: 雙擊編輯功能 placeholder
     const handleEditTime = (type: 'checkIn' | 'checkOut') => {
+        // (此處邏輯不變)
         const currentTime = record?.[type]?.toDate().toLocaleTimeString('it-IT') || '未設定';
         const newTimeStr = prompt(`編輯${type === 'checkIn' ? '簽到' : '簽退'}時間`, currentTime);
-        // 這裡只是 placeholder，實際功能會更複雜
-        // 需要將 HH:mm 字串轉回 Timestamp 並更新 Firestore
         alert(`（功能開發中）新時間: ${newTimeStr}`);
     };
 
-    if (loading) return <p>載入中...</p>;
-    if (!userProfile) return <p>找不到使用者資料。</p>;
+    if (loading) return <p className="text-center">載入中...</p>;
+    if (!userProfile) return <p className="text-center text-red-400">找不到 Email 為 {userEmail} 的使用者資料。</p>;
 
     return (
         <div className="max-w-md mx-auto">
+            <button onClick={() => navigate(-1)} className="mb-4 text-blue-400 hover:underline">
+                &larr; 返回上一頁
+            </button>
             <h2 className="text-3xl text-center mb-6">{userProfile.name} - 今日打卡</h2>
             <div className="bg-gray-800 p-6 rounded-lg text-center">
                 <div
@@ -107,7 +122,7 @@ const DailyRecordPage = () => {
                 </button>
                 <button
                     onClick={handleCheckOut}
-                    disabled={!record?.checkIn || !!record.checkOut}
+                    disabled={!record?.checkIn || !!record?.checkOut}
                     className="bg-red-600 hover:bg-red-700 disabled:bg-gray-500 text-white font-bold py-3 px-8 rounded-lg"
                 >
                     簽退
@@ -122,4 +137,4 @@ const DailyRecordPage = () => {
     );
 };
 
-export default DailyRecordPage;
+export default RecordPage;

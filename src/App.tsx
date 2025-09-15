@@ -1,28 +1,42 @@
 import { Routes, Route } from 'react-router-dom';
 import HomePage from './pages/Home';
 import LoginPage from './pages/Login';
-import DailyRecordPage from './pages/Record';
+import RecordPage from './pages/Record';
+import MyRecordsPage from './pages/MyRecords';
 import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
+
+import { AuthGuard } from './components/AuthGuard';
+import { AdminGuard } from './components/AdminGuard';
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
       <Route
-        path="/"
         element={
-          <ProtectedRoute>
+          <AuthGuard>
             <Layout />
-          </ProtectedRoute>
+          </AuthGuard>
         }
       >
-        <Route index element={<HomePage />} />
-        <Route path="record/:userId" element={<DailyRecordPage />} />
-        <Route path="admin" element={<AdminPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/my-records" element={<MyRecordsPage />} />
       </Route>
-    </Routes>
+
+      <Route
+        element={
+          <AdminGuard>
+            <Layout />
+          </AdminGuard>
+        }
+      >
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/record/:userEmail" element={<RecordPage />} />
+      </Route>
+
+    </Routes >
   );
 }
 
