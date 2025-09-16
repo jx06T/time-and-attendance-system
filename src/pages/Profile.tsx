@@ -1,28 +1,36 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuthStatus } from '../hooks/useAuthStatus'; // 1. 使用我们统一的 Hook
+import { useAuthStatus } from '../hooks/useAuthStatus';
 import { TimeRecord, UserProfile } from '../types';
 import { UserRole } from '../types';
+import { Timestamp } from 'firebase/firestore';
+
+const formatTime = (time: Timestamp | Date | null | undefined): string => {
+  if (!time) {
+    return 'N/A';
+  }
+
+  const date = time instanceof Timestamp ? time.toDate() : time;
+
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${hours}:${minutes}`;
+};
 
 function ProfilePage() {
-  // 2. 从一个 Hook 获取所有需要的用户和权限信息
   const { user, role, loading: authLoading } = useAuthStatus();
 
-  // State for user's profile data from Firestore
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  // State for user's time records
   const [records, setRecords] = useState<TimeRecord[]>([]);
-  // Combined loading state
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 确保 Auth 状态加载完毕并且用户已登录
     if (!authLoading && user && user.email) {
       const fetchData = async () => {
         setLoading(true);
 
-        // --- 任务 1: 获取用户的详细个人资料 ---
         const userQuery = query(collection(db, 'users'), where('email', '==', user.email));
         const userSnapshot = await getDocs(userQuery);
         if (!userSnapshot.empty) {
@@ -30,7 +38,6 @@ function ProfilePage() {
           setUserProfile({ id: userDoc.id, ...userDoc.data() } as UserProfile);
         }
 
-        // --- 任务 2: 获取用户的打卡记录 ---
         const recordsQuery = query(
           collection(db, 'timeRecords'),
           where('userEmail', '==', user.email),
@@ -48,12 +55,10 @@ function ProfilePage() {
 
       fetchData();
     } else if (!authLoading) {
-      // 如果 Auth 加载完毕但用户未登录
       setLoading(false);
     }
-  }, [authLoading, user]); // 当 Auth 状态或 user 对象变化时触发
+  }, [authLoading, user]);
 
-  // 辅助函数，将角色枚举转换为可读的中文
   const getRoleDisplayName = (userRole: UserRole): string => {
     switch (userRole) {
       case UserRole.SuperAdmin: return '最高管理者';
@@ -76,25 +81,26 @@ function ProfilePage() {
     <div className="max-w-4xl mx-auto px-4">
       <h1 className="text-3xl font-bold mb-8 text-center">個人檔案</h1>
 
+      <h2 className="text-xl font-bold text-neutral mb-4 text-left">基本資料</h2>
+
       <div className="bg-gray-800 p-6 rounded-lg mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">基本資料</h2>
         {userProfile ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
             <div>
-              <p className="text-sm text-gray-400">姓名</p>
-              <p className="text-lg font-semibold">{userProfile.name}</p>
+              <p className="text-sm text-gray-400 mb-0.5">班級</p>
+              <p className="text-lg">{userProfile.classId}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-400">班級</p>
-              <p className="text-lg font-semibold">{userProfile.classId}</p>
+              <p className="text-sm text-gray-400 mb-0.5">座號</p>
+              <p className="text-lg">{userProfile.seatNo}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-400">座號</p>
-              <p className="text-lg font-semibold">{userProfile.seatNo}</p>
+              <p className="text-sm text-gray-400 mb-0.5">姓名</p>
+              <p className="text-lg">{userProfile.name}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-400">身份</p>
-              <p className="text-lg font-semibold text-green-400">{getRoleDisplayName(role)}</p>
+              <p className="text-sm text-gray-400 mb-0.5">身份</p>
+              <p className="text-lg text-accent-li">{getRoleDisplayName(role)}</p>
             </div>
           </div>
         ) : (
@@ -103,21 +109,21 @@ function ProfilePage() {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-white mb-4 text-left">打卡紀錄</h2>
+        <h2 className="text-xl font-bold text-neutral mb-4 text-left">打卡紀錄</h2>
         {records.length === 0 ? (
           <p className="text-center text-gray-400 bg-gray-800 p-6 rounded-lg">目前沒有任何打卡紀錄。</p>
         ) : (
-          <div className="bg-gray-800 rounded-lg overflow-x-auto">
+          <div className="bg-gray-800 rounded-lg overflow-x-auto p-6 py-3">
             <table className="w-full text-left">
-              <thead className="bg-gray-700">
+              <thead className="bg-gray-800 border-b-2 border-accent">
                 <tr>
-                  <th className="p-3">日期</th>
-                  <th className="p-3">簽到時間</th>
-                  <th className="p-3">簽退時間</th>
-                  <th className="p-3">時數</th>
+                  <th className="py-3">日期</th>
+                  <th className="py-3">簽到時間</th>
+                  <th className="py-3">簽退時間</th>
+                  <th className="py-3">時數</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className=' group'>
                 {records.map(record => {
                   let totalHours = 0;
                   if (record.checkIn && record.checkOut) {
@@ -126,11 +132,11 @@ function ProfilePage() {
                     totalHours = Math.max(0, durationMillis / (1000 * 60 * 60));
                   }
                   return (
-                    <tr key={record.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                      <td className="p-3">{record.date}</td>
-                      <td className="p-3 font-mono">{record.checkIn?.toDate().toLocaleTimeString() || 'N/A'}</td>
-                      <td className="p-3 font-mono">{record.checkOut?.toDate().toLocaleTimeString() || 'N/A'}</td>
-                      <td className="p-3 font-mono">{totalHours > 0 ? totalHours.toFixed(2) : '-'}</td>
+                    <tr key={record.id} className=" not-last:border-b border-accent ">
+                      <td className="py-3">{record.date}</td>
+                      <td className="py-3 font-mono">{formatTime(record.checkIn)}</td>
+                      <td className="py-3 font-mono">{formatTime(record.checkOut)}</td>
+                      <td className="py-3 font-mono">{totalHours > 0 ? totalHours.toFixed(2) : '-'}</td>
                     </tr>
                   );
                 })}

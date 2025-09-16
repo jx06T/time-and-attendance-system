@@ -18,6 +18,6 @@ export function AuthGuard({ children }: { children: React.ReactElement }) {
             </Layout>
         );
     } else {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/" replace />;
     }
 };

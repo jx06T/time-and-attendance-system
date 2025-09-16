@@ -9,7 +9,6 @@ import PermissionsManager from '../components/admin/PermissionsManager';
 import { UserRole } from '../types';
 
 
-// 定义 Tab 的类型
 type AdminTabKey = 'rankings' | 'userReport' | 'import' | 'permissions';
 interface AdminTab {
     key: AdminTabKey;
@@ -22,7 +21,6 @@ const AdminPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // 根据角色动态生成可用的 Tab 列表
     const availableTabs = useMemo((): AdminTab[] => {
         const tabs: AdminTab[] = [
             { key: 'rankings', label: '查看週報表', component: RankingsReport },
@@ -57,16 +55,16 @@ const AdminPage = () => {
 
     return (
         <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-3xl text-center mb-6">管理員後台</h2>
+            <h1 className="text-3xl font-bold mb-8 text-center">管理員後台</h1>
 
-            <div className="flex border-b border-gray-700 mb-8 overflow-x-auto">
+            <div className="flex border-b-2 border-gray-400 mb-8 overflow-x-auto">
                 {availableTabs.map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => handleTabClick(tab.key)}
-                        className={`py-2 px-4 text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === tab.key
-                            ? 'border-b-2 border-blue-400 text-white'
-                            : 'text-gray-400 hover:text-gray-200'
+                        className={`py-1 px-4 text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === tab.key
+                            ? 'border-b-2 border-accent-li text-neutral'
+                            : 'text-gray-300 hover:text-gray-200'
                             }`}
                     >
                         {tab.label}

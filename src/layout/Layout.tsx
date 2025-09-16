@@ -6,9 +6,9 @@ interface LayoutProps {
 
 function Layout({ children }: LayoutProps) {
     return (
-        <div className="min-h-screen bg-blue-900 text-gray-200 font-mono">
+        <div className="min-h-screen text-neutral-100 grid-background">
             <Header />
-            <main className="p-8">
+            <main className="px-2 sm:px-8 md:px-16 lg:px-[calc(2%+4rem)] pt-8">
                 {children || <Outlet />}
             </main>
         </div>

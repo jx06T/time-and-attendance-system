@@ -3,7 +3,6 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
 
-// 1. 引入 Chart.js 的必要模块
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -15,7 +14,6 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
-// 2. 注册 Chart.js 需要使用的组件
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -25,7 +23,6 @@ ChartJS.register(
     Legend
 );
 
-// 定义排名数据的接口
 interface Ranking extends UserProfile {
     totalHours: number;
 }
@@ -34,9 +31,9 @@ function RankingsReport() {
     const [weekStart, setWeekStart] = useState<Date>(() => {
         const today = new Date();
         const day = today.getDay();
-        const diff = today.getDate() - day + (day === 0 ? -6 : 1); // 周一作为一周的开始
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(today.setDate(diff));
-        monday.setHours(0, 0, 0, 0); // 将时间设置为当天的开始
+        monday.setHours(0, 0, 0, 0);
         return monday;
     });
     const [rankings, setRankings] = useState<Ranking[]>([]);
@@ -48,9 +45,8 @@ function RankingsReport() {
 
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
-            weekEnd.setHours(23, 59, 59, 999); // 将时间设置为当周的结束
-
-            // 1. 获取该周所有打卡记录
+            weekEnd.setHours(23, 59, 59, 999); 
+            
             const recordsRef = collection(db, 'timeRecords');
             const q = query(
                 recordsRef,

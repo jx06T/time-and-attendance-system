@@ -56,8 +56,7 @@ function ImportUsers() {
             setError('CSV 文件为空或格式不正确。');
             return;
         }
-        const usersRef = collection(db, "users");
-        const existingUsersSnapshot = await getDocs(query(usersRef));
+        const existingUsersSnapshot = await getDocs(collection(db, 'users'));
         const emailSet = new Set<string>();
         existingUsersSnapshot.forEach(doc => emailSet.add(doc.data().email.toLowerCase()));
 

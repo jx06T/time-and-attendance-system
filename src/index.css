@@ -14,3 +14,27 @@
     animation: fade-in 0.3s ease-out;
   }
 }
+
+body * {
+  font-family: "Noto Sans TC", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+.grid-background {
+  background-image: linear-gradient(
+      rgba(255, 255, 255, 0.2) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-color: #02151c;
+}
+
+@theme {
+  --color-brand: #02151c;
+  --color-neutral: #f5f5f5;
+  --color-brand-d: #171613;
+  --color-accent: #482767;
+  --color-accent-li: #cf84ff;
+}
