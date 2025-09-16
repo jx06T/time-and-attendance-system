@@ -1,28 +1,36 @@
 import React, { useState } from 'react';
-import { collection, query, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, getDocs, where, writeBatch, doc, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { UserProfile } from '../../types';
 import Papa from 'papaparse';
 
-// 定义预览数据的类型，增加一个 status 字段
+// 定义预览数据的类型，增加 status 和临时 id
 type PreviewUser = Partial<UserProfile> & {
     status: 'new' | 'update';
+    previewId: number;
 };
 
-const ImportUsers = () => {
-    // 状态管理
+// 手动输入表单的初始状态
+const initialFormState = { studentId: '', email: '', classId: '', seatNo: '', name: '' };
+
+function ImportUsers() {
+    // --- 批量导入相关状态 ---
     const [previewData, setPreviewData] = useState<PreviewUser[]>([]);
-    const [isProcessing, setIsProcessing] = useState(false); // 用于解析和写入过程
+    const [isProcessing, setIsProcessing] = useState(false); // 用于解析和批量写入
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [fileName, setFileName] = useState('');
 
-    // 1. 处理文件选择和解析
+    // --- 手动输入相关状态 ---
+    const [isManualFormExpanded, setIsManualFormExpanded] = useState(false);
+    const [manualForm, setManualForm] = useState(initialFormState);
+    const [manualSubmitLoading, setManualSubmitLoading] = useState(false);
+
+    // --- 函数：处理文件选择和解析 ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 重置状态
         setIsProcessing(true);
         setError('');
         setSuccess('');
@@ -33,7 +41,6 @@ const ImportUsers = () => {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
-                // 解析完成后，生成预览数据
                 await generatePreview(results.data);
                 setIsProcessing(false);
             },
@@ -44,26 +51,20 @@ const ImportUsers = () => {
         });
     };
 
-    // 2. 生成预览数据，并检查用户状态 (新增 vs 更新)
     const generatePreview = async (csvData: any[]) => {
         if (!csvData.length) {
             setError('CSV 文件为空或格式不正确。');
             return;
         }
-
-        // 先获取所有现有用户的 email，用于比对
         const usersRef = collection(db, "users");
         const existingUsersSnapshot = await getDocs(query(usersRef));
         const emailSet = new Set<string>();
-        existingUsersSnapshot.forEach(doc => {
-            emailSet.add(doc.data().email.toLowerCase());
-        });
+        existingUsersSnapshot.forEach(doc => emailSet.add(doc.data().email.toLowerCase()));
 
         const preview: PreviewUser[] = csvData
-            .map(row => {
+            .map((row, index) => {
                 const { studentId, email, classId, seatNo, name } = row;
-                if (!email || !name) return null; // 过滤掉无效行
-
+                if (!email || !name) return null;
                 const lowerCaseEmail = email.toLowerCase();
                 return {
                     studentId: studentId || '',
@@ -72,6 +73,7 @@ const ImportUsers = () => {
                     seatNo: seatNo || '',
                     name,
                     status: emailSet.has(lowerCaseEmail) ? 'update' : 'new',
+                    previewId: index, // 分配一个唯一的临时ID
                 };
             })
             .filter((item) => item !== null) as PreviewUser[];
@@ -79,7 +81,13 @@ const ImportUsers = () => {
         setPreviewData(preview);
     };
 
-    // 3. 确认汇入，执行批次写入
+    // --- 函数：从预览列表中移除一行 ---
+    const handleRemoveFromPreview = (idToRemove: number) => {
+        setPreviewData(currentPreview => currentPreview.filter(user => user.previewId !== idToRemove));
+        setSuccess(''); // 清除可能存在的成功信息
+    };
+
+    // --- 函数：确认批量汇入 ---
     const handleConfirmImport = async () => {
         if (previewData.length === 0) {
             setError('没有可汇入的资料。');
@@ -88,28 +96,21 @@ const ImportUsers = () => {
         setIsProcessing(true);
         setError('');
         setSuccess('');
-
         try {
             const batch = writeBatch(db);
             const usersRef = collection(db, "users");
-
-            // 同样需要获取现有用户的 email->id 映射，以便更新
             const existingUsersSnapshot = await getDocs(query(usersRef));
             const emailToIdMap = new Map<string, string>();
-            existingUsersSnapshot.forEach(doc => {
-                emailToIdMap.set(doc.data().email, doc.id);
-            });
+            existingUsersSnapshot.forEach(doc => emailToIdMap.set(doc.data().email, doc.id));
 
             previewData.forEach(user => {
-                const { status, ...userData } = user; // 移除 status 字段
+                const { status, previewId, ...userData } = user; // 移除临时字段
                 const existingUserId = emailToIdMap.get(user.email!);
 
                 if (status === 'update' && existingUserId) {
-                    // 更新现有文档
                     const userDocRef = doc(db, "users", existingUserId);
                     batch.set(userDocRef, userData, { merge: true });
                 } else {
-                    // 创建新文档
                     const newUserDocRef = doc(usersRef);
                     batch.set(newUserDocRef, { ...userData, uid: null });
                 }
@@ -117,9 +118,8 @@ const ImportUsers = () => {
 
             await batch.commit();
             setSuccess(`成功处理 ${previewData.length} 笔资料！`);
-            setPreviewData([]); // 清空预览
+            setPreviewData([]);
             setFileName('');
-
         } catch (err: any) {
             setError(`写入资料库时发生错误: ${err.message}`);
         } finally {
@@ -127,78 +127,103 @@ const ImportUsers = () => {
         }
     };
 
+    // --- 函数：处理手动提交 ---
+    const handleManualSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { email, name, studentId } = manualForm;
+        if (!email || !name || !studentId) {
+            setError("学号、Email 和姓名不能为空。");
+            return;
+        }
+
+        setManualSubmitLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", email.toLowerCase()));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                setError(`Email "${email}" 已存在，无法新增。`);
+                return;
+            }
+            await addDoc(usersRef, { ...manualForm, email: email.toLowerCase(), uid: null });
+            setSuccess(`成功新增使用者: ${name}`);
+            setManualForm(initialFormState);
+            setIsManualFormExpanded(false);
+        } catch (err: any) {
+            setError(`新增失败: ${err.message}`);
+        } finally {
+            setManualSubmitLoading(false);
+        }
+    };
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-bold mb-4">汇入使用者资料</h3>
-
-            {/* 文件上传区域 */}
-            <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center mb-6">
-                <input
-                    type="file"
-                    id="csv-upload"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    disabled={isProcessing}
-                    className="hidden"
-                />
-                <label htmlFor="csv-upload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    选择 CSV 档案
-                </label>
-                {fileName && <p className="text-gray-400 mt-2">已选择: {fileName}</p>}
-                <p className="text-sm text-gray-500 mt-2">
-                    请确保 CSV 包含 `studentId`, `email`, `classId`, `seatNo`, `name` 栏位。
-                </p>
+            {/* --- 手动输入区域 --- */}
+            <div className="mb-8">
+                <button onClick={() => setIsManualFormExpanded(!isManualFormExpanded)} className="w-full flex justify-between items-center text-left text-lg font-bold text-green-400 hover:text-green-300 transition-colors">
+                    <span>手动新增单个使用者</span>
+                    <span className={`transform transition-transform duration-200 ${isManualFormExpanded ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+                {isManualFormExpanded && (
+                    <form onSubmit={handleManualSubmit} className="mt-4 p-4 bg-gray-900 rounded-lg animate-fade-in space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium text-gray-400 mb-1">姓名*</label><input type="text" required value={manualForm.name} onChange={e => setManualForm({ ...manualForm, name: e.target.value })} className="w-full p-2 bg-gray-700 rounded border border-gray-600" /></div>
+                            <div><label className="block text-sm font-medium text-gray-400 mb-1">Email*</label><input type="email" required value={manualForm.email} onChange={e => setManualForm({ ...manualForm, email: e.target.value })} className="w-full p-2 bg-gray-700 rounded border border-gray-600" /></div>
+                            <div><label className="block text-sm font-medium text-gray-400 mb-1">学号*</label><input type="text" required value={manualForm.studentId} onChange={e => setManualForm({ ...manualForm, studentId: e.target.value })} className="w-full p-2 bg-gray-700 rounded border border-gray-600" /></div>
+                            <div><label className="block text-sm font-medium text-gray-400 mb-1">班级</label><input type="text" value={manualForm.classId} onChange={e => setManualForm({ ...manualForm, classId: e.target.value })} className="w-full p-2 bg-gray-700 rounded border border-gray-600" /></div>
+                            <div><label className="block text-sm font-medium text-gray-400 mb-1">座号</label><input type="text" value={manualForm.seatNo} onChange={e => setManualForm({ ...manualForm, seatNo: e.target.value })} className="w-full p-2 bg-gray-700 rounded border border-gray-600" /></div>
+                        </div>
+                        <div className="text-right pt-2">
+                            <button type="submit" disabled={manualSubmitLoading} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500 disabled:cursor-not-allowed">
+                                {manualSubmitLoading ? '新增中...' : '确认新增'}
+                            </button>
+                        </div>
+                    </form>
+                )}
             </div>
 
-            {/* 状态信息 */}
-            {isProcessing && <p className="text-center text-yellow-400 mb-4">处理中，请稍候...</p>}
-            {error && <p className="text-center text-red-400 mb-4">{error}</p>}
-            {success && <p className="text-center text-green-400 mb-4">{success}</p>}
-
-            {/* 预览区域 */}
-            {previewData.length > 0 && !isProcessing && (
-                <div className="animate-fade-in">
-                    <h4 className="font-bold mb-2">资料预览 ({previewData.length} 笔):</h4>
-                    <div className="overflow-x-auto max-h-96 bg-gray-900 rounded">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-700 sticky top-0">
-                                <tr>
-                                    <th className="p-2">状态</th>
-                                    <th className="p-2">Email</th>
-                                    <th className="p-2">姓名</th>
-                                    <th className="p-2">班级</th>
-                                    <th className="p-2">座号</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {previewData.map((user, index) => (
-                                    <tr key={index} className="border-b border-gray-700">
-                                        <td className="p-2">
-                                            <span className={`px-2 py-1 text-xs rounded ${user.status === 'new' ? 'bg-green-700 text-green-200' : 'bg-yellow-700 text-yellow-200'}`}>
-                                                {user.status === 'new' ? '新增' : '更新'}
-                                            </span>
-                                        </td>
-                                        <td className="p-2">{user.email}</td>
-                                        <td className="p-2">{user.name}</td>
-                                        <td className="p-2">{user.classId}</td>
-                                        <td className="p-2">{user.seatNo}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="text-center mt-6">
-                        <button
-                            onClick={handleConfirmImport}
-                            disabled={isProcessing}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg disabled:bg-gray-500"
-                        >
-                            确认汇入
-                        </button>
-                    </div>
+            <div className="border-t border-gray-700 pt-8">
+                <h3 className="text-xl font-bold mb-4">批量汇入使用者资料 (CSV)</h3>
+                <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center mb-6">
+                    <input type="file" id="csv-upload" accept=".csv" onChange={handleFileChange} disabled={isProcessing} className="hidden" />
+                    <label htmlFor="csv-upload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">选择 CSV 档案</label>
+                    {fileName && <p className="text-gray-400 mt-2">已选择: {fileName}</p>}
+                    <p className="text-sm text-gray-500 mt-2">请确保 CSV 包含 `studentId`, `email`, `classId`, `seatNo`, `name` 栏位。</p>
                 </div>
-            )}
+
+                {isProcessing && <p className="text-center text-yellow-400 mb-4">处理中，请稍候...</p>}
+                {error && <p className="text-center text-red-400 mb-4">{error}</p>}
+                {success && <p className="text-center text-green-400 mb-4">{success}</p>}
+
+                {previewData.length > 0 && !isProcessing && (
+                    <div className="animate-fade-in">
+                        <h4 className="font-bold mb-2">资料预览 ({previewData.length} 笔):</h4>
+                        <div className="overflow-x-auto max-h-96 bg-gray-900 rounded">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th className="p-2">状态</th><th className="p-2">Email</th><th className="p-2">姓名</th><th className="p-2">班级</th><th className="p-2">座号</th><th className="p-2">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {previewData.map((user) => (
+                                        <tr key={user.previewId}>
+                                            <td className="p-2"><span className={`px-2 py-1 text-xs rounded ${user.status === 'new' ? 'bg-green-700 text-green-200' : 'bg-yellow-700 text-yellow-200'}`}>{user.status === 'new' ? '新增' : '更新'}</span></td>
+                                            <td className="p-2">{user.email}</td><td className="p-2">{user.name}</td><td className="p-2">{user.classId}</td><td className="p-2">{user.seatNo}</td>
+                                            <td className="p-2"><button onClick={() => handleRemoveFromPreview(user.previewId)} className="text-red-500 hover:text-red-400 text-xs font-semibold">移除</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="text-center mt-6">
+                            <button onClick={handleConfirmImport} disabled={isProcessing} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg disabled:bg-gray-500 disabled:cursor-not-allowed">确认汇入</button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

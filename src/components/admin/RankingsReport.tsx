@@ -1,36 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
 
 // 1. 引入 Chart.js 的必要模块
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 // 2. 注册 Chart.js 需要使用的组件
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
 );
 
 // 定义排名数据的接口
 interface Ranking extends UserProfile {
-  totalHours: number;
+    totalHours: number;
 }
 
-const RankingsReport = () => {
+function RankingsReport() {
     const [weekStart, setWeekStart] = useState<Date>(() => {
         const today = new Date();
         const day = today.getDay();
@@ -77,7 +77,7 @@ const RankingsReport = () => {
                     const deductionMillis = (record.deductionMinutes || 0) * 60 * 1000;
                     const durationMillis = record.checkOut.toMillis() - record.checkIn.toMillis() - deductionMillis;
                     const hours = Math.max(0, durationMillis / (1000 * 60 * 60)); // 避免负数
-                    
+
                     const currentHours = userHours.get(email) || 0;
                     userHours.set(email, currentHours + hours);
                 }
@@ -107,7 +107,7 @@ const RankingsReport = () => {
             return newDate;
         });
     };
-    
+
     // --- 核心修改: 为长条图准备数据 ---
     const chartOptions = {
         responsive: true,
@@ -157,7 +157,7 @@ const RankingsReport = () => {
                 <span className="font-semibold text-lg">{weekStart.toLocaleDateString()} - {new Date(new Date(weekStart).setDate(weekStart.getDate() + 6)).toLocaleDateString()}</span>
                 <button onClick={() => handleWeekChange(1)} className="p-2 border border-gray-600 rounded hover:bg-gray-700">下一週 &gt;</button>
             </div>
-            
+
             {loading ? <p className="text-center">正在载入排名数据...</p> : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* 左侧：长条图 */}
