@@ -1,10 +1,9 @@
 import { Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/Landing';
-import UserHomePage from './pages/UserHome';
+import ProfilePage from './pages/Profile';
 import AdminHomePage from './pages/AdminHome';
 import LoginPage from './pages/Login';
 import RecordPage from './pages/Record';
-import MyRecordsPage from './pages/MyRecords';
 import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
 
@@ -26,8 +25,7 @@ function App() {
           </AuthGuard>
         }
       >
-        <Route path="/dashboard" element={<UserHomePage />} />
-        <Route path="/my-records" element={<MyRecordsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       <Route

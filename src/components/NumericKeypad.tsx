@@ -6,11 +6,13 @@ interface NumericKeypadProps {
     onClear: () => void;
 }
 
-const KeypadButton: React.FC<{ onClick: () => void, children: React.ReactNode, className?: string }> = ({ onClick, children, className }) => (
-    <button onClick={onClick} className={`border border-blue-400 p-4 text-xl rounded hover:bg-blue-700 ${className}`}>
-        {children}
-    </button>
-);
+function KeypadButton({ onClick, children, className }: { onClick: () => void, children: React.ReactNode, className?: string }) {
+    return (
+        <button onClick={onClick} className={`border border-blue-400 p-4 text-xl rounded hover:bg-blue-700 ${className}`}>
+            {children}
+        </button>
+    )
+}
 
 function NumericKeypad({ onInput, onDelete, onClear }: NumericKeypadProps) {
     const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];

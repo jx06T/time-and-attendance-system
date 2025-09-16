@@ -1,17 +1,23 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuthStatus, AuthStatus } from '../hooks/useAuthStatus';
+import Layout from '../layout/Layout';
+import { UserRole } from '../types';
 
 export function AuthGuard({ children }: { children: React.ReactElement }) {
-    const { user, loading } = useAuth();
+    const { role, loading }: AuthStatus = useAuthStatus();
 
     if (loading) {
-        return <div>Loading...</div>;
+        return <div className="flex items-center justify-center min-h-screen">正在驗證身分...</div>;
     }
 
-    if (!user) {
+    if (role !== UserRole.Visitor) {
+        return (
+            <Layout>
+                <Outlet />
+            </Layout>
+        );
+    } else {
         return <Navigate to="/login" replace />;
     }
-
-    return children;
 };
