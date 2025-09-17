@@ -179,7 +179,7 @@ const AdminRecordPage = () => {
                     <div className="text-center">
                         <h2 className="text-2xl font-bold">{userProfile.name}</h2>
                     </div>
-                    <div className="relative">
+                    <div className="relative overflow-hidden">
                         <button
                             onClick={() => {
                                 datePickerRef.current?.showPicker();
