@@ -6,6 +6,7 @@ import { useUsers } from '../../context/UsersContext';
 import { formatTime } from '../../utils/tools'
 import CustomSelect from '../ui/CustomSelect';
 import CustomMonthPicker from '../ui/CustomMonthPicker';
+import { useToast } from '../../hooks/useToast';
 
 import {
     Chart as ChartJS,
@@ -35,7 +36,7 @@ function UserReport() {
     const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
     const [monthlyRecords, setMonthlyRecords] = useState<TimeRecord[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { addToast } = useToast();
 
     const { allUsers: contextUsers } = useUsers();
 
@@ -51,7 +52,6 @@ function UserReport() {
 
         const fetchMonthlyRecords = async () => {
             setLoading(true);
-            setError('');
             try {
                 const [year, month] = selectedMonth.split('-').map(Number);
 
@@ -74,7 +74,7 @@ function UserReport() {
                 setMonthlyRecords(recordsList);
 
             } catch (err: any) {
-                setError(`載入打卡紀錄失敗: ${err.message}`);
+                addToast(`載入打卡紀錄失敗: ${err.message}`, "error");
                 console.error("錯誤：", err.message);
             } finally {
                 setLoading(false);
@@ -130,7 +130,7 @@ function UserReport() {
             },
             title: {
                 display: true,
-                text: `當週排名`,
+                text: `${allUsers.find(e => e.email === selectedUserEmail)?.name} 的 ${selectedMonth} 報表`,
                 color: '#FFFFFF',
                 font: {
                     size: 18,
@@ -170,8 +170,6 @@ function UserReport() {
         <>
             <div className="bg-gray-800 p-6 rounded-lg">
                 <h3 className="text-xl font-bold mb-4">單人報表</h3>
-                {error && <p className="text-red-400 mb-4">{error}</p>}
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     <CustomSelect
                         value={selectedUserEmail}
@@ -203,7 +201,7 @@ function UserReport() {
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-700 sticky top-0">
                                         <tr>
-                                            <th className="p-3 px-4">日期</th><th className="p-3 px-4">簽到</th><th className="p-3 px-4">簽退</th><th className="p-3 px-4">扣時</th><th className="p-3 px-4">工時</th>
+                                            <th className="p-3 px-4">日期</th><th className="p-3 px-4">簽到</th><th className="p-3 px-4">簽退</th><th className="p-3 px-4">扣時&備註</th><th className="p-3 px-4">工時</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -218,7 +216,11 @@ function UserReport() {
                                                     <td className="p-3 px-4">{record.date}</td>
                                                     <td className="p-3 px-4">{formatTime(record.checkIn)}</td>
                                                     <td className="p-3 px-4">{formatTime(record.checkOut)}</td>
-                                                    <td className="p-3 px-4">{record.deductionMinutes || 0}</td>
+                                                    <td className={`p-3 px-4 ${record.notes ? " cursor-pointer" : ""}`} onClick={() => {
+                                                        if (record.notes) {
+                                                            addToast(`扣時原因：${record.notes}`,'success',100000)
+                                                        }
+                                                    }}>{(record.deductionMinutes || 0) + (record.notes ? " *" : "")}</td>
                                                     <td className="p-3 px-4 font-semibold">{hours > 0 ? hours.toFixed(2) : '-'}</td>
                                                 </tr>
                                             )

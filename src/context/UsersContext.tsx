@@ -3,7 +3,9 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
-
+import { useAuthStatus } from '../hooks/useAuthStatus';
+import { UserRole } from '../types';
+import { useToast } from '../hooks/useToast';
 
 interface UsersContextType {
     allUsers: UserProfile[];
@@ -16,11 +18,16 @@ interface UsersContextType {
 const UsersContext = createContext<UsersContextType | undefined>(undefined);
 
 export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { role } = useAuthStatus();
+
     const [allUsers, setAllUsers] = useLocalStorage<UserProfile[]>('allUsers', []);
     const [lastUpdated, setLastUpdated] = useLocalStorage<string | null>('usersLastUpdated', null);
     const [loading, setLoading] = useState(false);
+    const { addToast } = useToast();
 
     const fetchUsers = useCallback(async () => {
+
+        addToast("更新使用者列表")
         setLoading(true);
         try {
             const querySnapshot = await getDocs(collection(db, 'users'));
@@ -32,6 +39,7 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setAllUsers(usersList);
             setLastUpdated(new Date().toISOString());
         } catch (error) {
+            addToast(`Failed to fetch users:${error}`)
             console.error("Failed to fetch users:", error);
         } finally {
             setLoading(false);
@@ -39,6 +47,9 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [setAllUsers, setLastUpdated]);
 
     useEffect(() => {
+        if (role === UserRole.Visitor) {
+            return
+        }
         if (allUsers.length === 0) {
             fetchUsers();
         }

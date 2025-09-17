@@ -74,7 +74,7 @@ function CustomSelect({ value, onChange, options, placeholder = "請選擇..." }
                     </div>
 
                     {/* 選項列表 */}
-                    <div className="max-h-80 overflow-y-auto">
+                    <div className="max-h-60 overflow-y-auto">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map(option => (
                                 <div

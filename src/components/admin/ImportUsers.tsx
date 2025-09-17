@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { collection, query, getDocs, where, writeBatch, doc, addDoc } from 'firebase/firestore';
+import { collection, query, setDoc, getDocs, where, writeBatch, doc, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { UserProfile } from '../../types';
 import Papa from 'papaparse';
 import { useUsers } from '../../context/UsersContext';
+import { useToast } from '../../hooks/useToast';
+import { createConfirmDialog } from '../../utils/createConfirmDialog';
 
 type PreviewUser = Partial<UserProfile> & {
     status: 'new' | 'update';
@@ -16,8 +18,6 @@ function ImportUsers() {
     // --- for 批量導入 ---
     const [previewData, setPreviewData] = useState<PreviewUser[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [fileName, setFileName] = useState('');
 
     // --- for 手動輸入 ---
@@ -26,14 +26,13 @@ function ImportUsers() {
     const [manualSubmitLoading, setManualSubmitLoading] = useState(false);
 
     const { allUsers } = useUsers();
+    const { addToast } = useToast();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsProcessing(true);
-        setError('');
-        setSuccess('');
         setPreviewData([]);
         setFileName(file.name);
 
@@ -45,7 +44,7 @@ function ImportUsers() {
                 setIsProcessing(false);
             },
             error: (err) => {
-                setError(`CSV 解析失敗: ${err.message}`);
+                addToast(`CSV 解析失敗: ${err.message}`, 'error');
                 setIsProcessing(false);
             }
         });
@@ -53,7 +52,7 @@ function ImportUsers() {
 
     const generatePreview = async (csvData: any[]) => {
         if (!csvData.length) {
-            setError('CSV 文件為空或格式錯誤。');
+            addToast('CSV 文件為空或格式錯誤。', 'error');
             return;
         }
 
@@ -77,22 +76,22 @@ function ImportUsers() {
             })
             .filter((item) => item !== null) as PreviewUser[];
 
+        if (!preview || preview.length === 0) {
+            addToast('CSV 文件為空或格式錯誤。', 'error');
+        }
         setPreviewData(preview);
     };
 
     const handleRemoveFromPreview = (idToRemove: number) => {
         setPreviewData(currentPreview => currentPreview.filter(user => user.previewId !== idToRemove));
-        setSuccess('');
     };
 
     const handleConfirmImport = async () => {
         if (previewData.length === 0) {
-            setError('沒有可匯入資料');
+            addToast('沒有可匯入資料', 'error');
             return;
         }
         setIsProcessing(true);
-        setError('');
-        setSuccess('');
         try {
             const batch = writeBatch(db);
             const usersRef = collection(db, "users");
@@ -114,11 +113,11 @@ function ImportUsers() {
             });
 
             await batch.commit();
-            setSuccess(`成功處理 ${previewData.length} 筆資料！`);
+            addToast(`成功處理 ${previewData.length} 筆資料！`);
             setPreviewData([]);
             setFileName('');
         } catch (err: any) {
-            setError(`寫入資料庫時發生錯誤: ${err.message}`);
+            addToast(`寫入資料庫時發生錯誤: ${err.message}`, 'error');
         } finally {
             setIsProcessing(false);
         }
@@ -128,27 +127,42 @@ function ImportUsers() {
         e.preventDefault();
         const { email, name, studentId, seatNo, classId } = manualForm;
         if (!email || !name || !studentId || !seatNo || !classId) {
-            setError("資料不完整。");
+            addToast("資料不完整。", 'error');
             return;
         }
 
         setManualSubmitLoading(true);
-        setError('');
-        setSuccess('');
         try {
             const usersRef = collection(db, "users");
             const q = query(usersRef, where("email", "==", email.toLowerCase()));
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
-                setError(`Email "${email}" 已存在，無法新增。`);
+                const existingDoc = querySnapshot.docs[0];
+                createConfirmDialog({
+                    title: "更新使用者資料",
+                    message: `Email "${email}" 已存在於系统中 (姓名: ${existingDoc.data().name})。\n您確定要用現在輸入的新資料覆蓋它嗎？`,
+                    onConfirm: async () => {
+                        const userDocRef = doc(db, "users", existingDoc.id);
+                        await setDoc(userDocRef, {
+                            ...manualForm,
+                            email: email
+                        }, { merge: true });
+
+                        addToast(`成功更新使用者: ${name}`, 'success');
+                    },
+                    onCancel: () => { },
+                    confirmText: "覆蓋",
+                    cancelText: "取消"
+                });
+
                 return;
             }
             await addDoc(usersRef, { ...manualForm, email: email.toLowerCase(), uid: null });
-            setSuccess(`成功新增使用者: ${name}`);
+            addToast(`成功新增使用者: ${name}`);
             setManualForm(initialFormState);
             setIsManualFormExpanded(false);
         } catch (err: any) {
-            setError(`新增失敗: ${err.message}`);
+            addToast(`新增失敗: ${err.message}`, 'error');
         } finally {
             setManualSubmitLoading(false);
         }
@@ -190,9 +204,6 @@ function ImportUsers() {
                     </div>
 
                     {isProcessing && <p className="text-center text-yellow-400 mb-4">處理中...</p>}
-                    {error && <p className="text-center text-red-400 mb-4">{error}</p>}
-                    {success && <p className="text-center text-green-400 mb-4">{success}</p>}
-
                     {previewData.length > 0 && !isProcessing && (
                         <div className="animate-fade-in">
                             <h4 className="font-bold mb-2">預覽資料 ({previewData.length} 筆):</h4>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useToast } from '../hooks/useToast';
 import { UserRole } from '../types';
 
 export interface AuthStatus {
@@ -18,6 +19,7 @@ export const useAuthStatus = (): AuthStatus => {
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<UserRole>(UserRole.Visitor);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
@@ -45,7 +47,8 @@ export const useAuthStatus = (): AuthStatus => {
                     setRole(UserRole.User);
                 }
             } catch (error) {
-                console.error("检查管理员权限时发生错误:", error);
+                addToast("無法檢查權限", 'error')
+                console.error("檢查管理員權限時發生錯誤:", error);
                 setRole(UserRole.User);
             } finally {
                 setLoading(false);
@@ -53,7 +56,7 @@ export const useAuthStatus = (): AuthStatus => {
         });
 
         return () => unsubscribe();
-    }, []); 
+    }, []);
 
     return { user, role, loading };
 };
