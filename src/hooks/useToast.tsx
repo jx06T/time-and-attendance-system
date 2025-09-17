@@ -22,7 +22,7 @@ const ToastItem = ({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     useEffect(() => {
         const timer = setTimeout(() => {
             onRemove(toast.id);
-        }, toast.duration || 3000);
+        }, toast.duration || 4000);
 
         return () => clearTimeout(timer);
     }, [toast.id, toast.duration, onRemove]);

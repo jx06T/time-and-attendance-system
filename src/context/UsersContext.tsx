@@ -26,8 +26,9 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { addToast } = useToast();
 
     const fetchUsers = useCallback(async () => {
-
-        addToast("更新使用者列表")
+        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin) {
+            return
+        }
         setLoading(true);
         try {
             const querySnapshot = await getDocs(collection(db, 'users'));
@@ -38,6 +39,8 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             setAllUsers(usersList);
             setLastUpdated(new Date().toISOString());
+            addToast("更新使用者列表")
+
         } catch (error) {
             addToast(`Failed to fetch users:${error}`)
             console.error("Failed to fetch users:", error);

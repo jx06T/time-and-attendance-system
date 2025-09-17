@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
 import { useUsers } from '../../context/UsersContext';
+import { useToast } from '../../hooks/useToast';
 
 import {
     Chart as ChartJS,
@@ -40,6 +41,8 @@ function RankingsReport() {
     const [rankings, setRankings] = useState<Ranking[]>([]);
     const [loading, setLoading] = useState(false);
     const { allUsers } = useUsers();
+    const { addToast } = useToast();
+    const [isPublishing, setIsPublishing] = useState(false);
 
     useEffect(() => {
         const fetchRankings = async () => {
@@ -91,6 +94,42 @@ function RankingsReport() {
 
         fetchRankings();
     }, [weekStart]);
+
+
+    const handlePublishRankings = async () => {
+        if (rankings.length === 0) {
+            addToast("無資料可發布", 'error');
+            return;
+        }
+        setIsPublishing(true);
+        try {
+            const championHours = rankings[0].totalHours * 1.2;
+            if (championHours <= 0) {
+                addToast("最高時數為0，無法更新", "error");
+                setIsPublishing(false);
+                return;
+            }
+
+            const topFive = rankings.slice(0, 5).map(user => ({
+                name: user.name,
+                percentage: (user.totalHours / championHours) * 100,
+            }));
+
+            const championDocRef = doc(db, 'publicData', 'weeklyChampion');
+            await updateDoc(championDocRef, {
+                topFive: topFive,
+                updatedAt: Timestamp.now(),
+                weekStartDate: Timestamp.fromDate(weekStart),
+            });
+
+            addToast("已成功發布!", "success");
+
+        } catch (error: any) {
+            addToast(`發布失敗: ${error.message}`, "error");
+        } finally {
+            setIsPublishing(false);
+        }
+    };
 
     const handleWeekChange = (offset: number) => {
         setWeekStart(prev => {
@@ -176,6 +215,15 @@ function RankingsReport() {
                             ))}
                             {rankings.length === 0 && <p className="text-gray-500">該週無打卡紀錄</p>}
                         </ul>
+                        <div className=" mt-4">
+                            <button
+                                onClick={handlePublishRankings}
+                                disabled={isPublishing || rankings.length === 0}
+                                className="border-2 border-accent-li text-accent-li font-semibold py-2 px-4 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isPublishing ? '發布中...' : '更新並發布至首頁'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

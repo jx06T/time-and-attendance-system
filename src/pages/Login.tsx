@@ -16,7 +16,7 @@ const LoginPage = () => {
             await checkAndBindUserProfile(result.user);
             navigate('/');
         } catch (error) {
-            addToast(`登入失敗: ${error.message}`, 'error')
+            // addToast(`登入失敗: ${error.message}`, 'error')
             console.error("Google login failed", error);
             await signOut(auth);
         }
@@ -32,7 +32,7 @@ const LoginPage = () => {
         const userSnapshot = await getDocs(userQuery);
 
         if (userSnapshot.empty) {
-            addToast(`您的資料尚未存於系統，請聯絡管理員。`, 'error')
+            addToast(`此帳號 ${userEmail} 未在存於系統，請聯絡管理員。`, 'error')
             console.log(`系統中未找到 ${userEmail} 的個人資料。`);
             throw new Error("User profile not found.");
         }
@@ -42,7 +42,7 @@ const LoginPage = () => {
 
         if (userData.uid) {
             if (userData.uid === user.uid) {
-                addToast(`帳號 ${userEmail} 已經綁定，登入成功`)
+                addToast(`帳號 ${userEmail} 登入成功。`)
                 console.log(`使用者 ${userEmail} 已綁定，歡迎回來！`);
                 return;
             } else {
@@ -51,7 +51,7 @@ const LoginPage = () => {
                 throw new Error("Security alert: UID mismatch.");
             }
         } else {
-            addToast(" Google 帳號綁定成功！")
+            addToast(`帳號 ${userEmail} 綁定成功。`)
             console.log(`使用者資料存在: ${userDoc.id}，正在綁定 UID...`);
             await updateDoc(doc(db, 'users', userDoc.id), {
                 uid: user.uid

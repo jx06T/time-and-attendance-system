@@ -159,7 +159,6 @@ function UserReport() {
         datasets: [{
             label: '每日工時',
             data: reportData.dailyHours,
-            fill: true,
             backgroundColor: 'rgb(64, 47, 113,0.7)',
             borderColor: 'rgb(212, 145, 255)',
             tension: 0.1
@@ -218,7 +217,7 @@ function UserReport() {
                                                     <td className="p-3 px-4">{formatTime(record.checkOut)}</td>
                                                     <td className={`p-3 px-4 ${record.notes ? " cursor-pointer" : ""}`} onClick={() => {
                                                         if (record.notes) {
-                                                            addToast(`備註：${record.notes}`,'success',100000)
+                                                            addToast(`備註：${record.notes}`, 'success', 10000)
                                                         }
                                                     }}>{(record.deductionMinutes || 0) + (record.notes ? " *" : "")}</td>
                                                     <td className="p-3 px-4 font-semibold">{hours > 0 ? hours.toFixed(2) : '-'}</td>

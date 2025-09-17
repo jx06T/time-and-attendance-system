@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useAuthStatus } from '../hooks/useAuthStatus';
 import { UserRole } from '../types';
+import TopThreeChart from '../components/TopThreeChart';
+
 
 const LandingPage = () => {
     const { user, role, loading } = useAuthStatus();
@@ -54,7 +56,7 @@ const LandingPage = () => {
             </p>
 
             {renderAction()}
-            <div className=' mt-20 text-left space-y-6 mb-24'>
+            <div className=' mt-20 text-left space-y-9 mb-24'>
                 <div>
                     <h1 className=' text-2xl font-bold mb-2'>
                         關於此系統
@@ -85,6 +87,12 @@ const LandingPage = () => {
                     </h1>
                     <p>此系統採用 MIT 協議開源</p>
                     <a className=' decoration-accent-li underline underline-offset-2' href="https://github.com/jx06T/time-and-attendance-system">儲存庫連結</a>
+                </div>
+                <div>
+                    <h1 className=' text-2xl font-bold mb-3'>
+                        排行榜
+                    </h1>
+                    <TopThreeChart />
                 </div>
             </div>
         </div>
