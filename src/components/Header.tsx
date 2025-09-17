@@ -4,7 +4,7 @@ import { useAuthStatus } from '../hooks/useAuthStatus';
 import { UserRole } from '../types';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '../hooks/useToast';
 
 import { Menu } from '../assets/Icons'
@@ -14,12 +14,15 @@ function Header() {
     const [showMenu, setShowMenu] = useState(false)
     const navigate = useNavigate();
     const { addToast } = useToast();
+    const MenuRef = useRef(null)
 
     useEffect(() => {
         const handleClickOutside = () => {
-            setShowMenu(false);
+            // @ts-expect-error
+            if (MenuRef.current && !MenuRef.current.contains(event.target as Node)) {
+                setShowMenu(false);
+            }
         };
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
@@ -44,13 +47,12 @@ function Header() {
                 <>
                     <Link to="/admin/dashboard">打卡</Link>
                     <Link to="/admin/reports">管理面板</Link>
+                    <a className='' href="https://github.com/jx06T/time-and-attendance-system">Github</a>
                 </>
             );
         }
-        if (role === UserRole.User) {
-        }
 
-        return null;
+        return <a className='' href="https://github.com/jx06T/time-and-attendance-system">Github</a>
     };
 
 
@@ -85,7 +87,7 @@ function Header() {
                 ) :
                     <Link className=" border-2 border-accent-li text-accent-li cursor-pointer px-3 py-1.5 rounded text-sm transition-colors" to="/login">登入</Link>}
 
-                <button className=' md:hidden block -mx-3.5' onClick={() => setShowMenu(!showMenu)}>
+                <button ref={MenuRef} className=' md:hidden block -mx-3.5' onClick={() => setShowMenu(!showMenu)}>
                     <Menu className=' text-neutral text-3xl' />
                 </button>
             </div>

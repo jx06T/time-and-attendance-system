@@ -193,9 +193,9 @@ function RankingsReport() {
     return (
         <div>
             <div className="flex justify-center items-center gap-4 mb-8">
-                <button onClick={() => handleWeekChange(-1)} className="p-1.5 px-2.5 border-2 border-accent-li text-accent-li rounded cursor-pointer">&lt; 上一週</button>
+                <button onClick={() => handleWeekChange(-1)} className="p-1.5 px-2.5 border-2 border-accent-li text-accent-li rounded cursor-pointer">&lt; <span className=' hidden md:inline'>上一週</span></button>
                 <span className="font-semibold text-lg">{weekStart.toLocaleDateString()} - {new Date(new Date(weekStart).setDate(weekStart.getDate() + 6)).toLocaleDateString()}</span>
-                <button onClick={() => handleWeekChange(1)} className="p-1.5 px-2.5 border-2 border-accent-li text-accent-li rounded cursor-pointer">下一週 &gt;</button>
+                <button onClick={() => handleWeekChange(1)} className="p-1.5 px-2.5 border-2 border-accent-li text-accent-li rounded cursor-pointer"><span className=' hidden md:inline'>下一週</span> &gt;</button>
             </div>
 
             {loading ? <p className="text-center">正在載入當週排名...</p> : (

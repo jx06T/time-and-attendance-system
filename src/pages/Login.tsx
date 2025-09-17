@@ -71,7 +71,7 @@ const LoginPage = () => {
                 <h1 className=' text-2xl font-bold mb-2'>
                     相關說明
                 </h1>
-                <ol className='list-decimal list-outside ml-5 space-y-1' >
+                <ol className='list-decimal list-outside ml-6 space-y-1' >
                     <li>
                         帳號說明
                         <br />

@@ -167,74 +167,76 @@ const AdminRecordPage = () => {
     if (!userProfile) return <p className="text-center text-red-400">找不到 Email 為 "{userEmail}" 的使用者資料。</p>;
 
     return (
-        <div className="max-w-md mx-auto px-4 pb-8 pt-4">
-            <div className="flex justify-between items-center mb-6">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700"
-                >
-                    &larr; <span className="hidden sm:inline">返回</span>
-                </button>
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold">{userProfile.name}</h2>
-                </div>
-                <div className="relative">
+        <div className=' px-3 pt-6 w-full flex flex-col items-center '>
+            <div className="max-w-md w-full">
+                <div className="flex justify-between items-center mb-6">
                     <button
-                        onClick={() => datePickerRef.current?.showPicker()}
-                        className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700"
                     >
-                        {isToday ? "今日" : toLocalDateString(selectedDate)}
+                        &larr; <span className="hidden sm:inline">返回</span>
                     </button>
-                    <input
-                        type="date"
-                        ref={datePickerRef}
-                        value={toLocalDateString(selectedDate)}
-                        onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                        className="absolute top-0 left-0 cursor-pointer opacity-0 pointer-events-none"
-                    />
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold">{userProfile.name}</h2>
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => datePickerRef.current?.showPicker()}
+                            className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
+                        >
+                            {isToday ? "今日" : toLocalDateString(selectedDate)}
+                        </button>
+                        <input
+                            type="date"
+                            ref={datePickerRef}
+                            value={toLocalDateString(selectedDate)}
+                            onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                            className="absolute top-0 left-0 cursor-pointer opacity-0 pointer-events-none"
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {loading ? <div className="text-center p-8">正在載入紀錄...</div> : (
-                <div className="space-y-6">
-                    <div className="bg-gray-800 p-4 rounded-lg text-center flex justify-around">
-                        <div>
-                            <p className="text-base text-gray-400">資料庫簽到時間</p>
-                            <p className="text-2xl font-mono mt-1">{formatTime(record?.checkIn) || '--:--'}</p>
-                        </div>
-                        <div>
-                            <p className="text-base text-gray-400">資料庫簽退時間</p>
-                            <p className="text-2xl font-mono mt-1">{formatTime(record?.checkOut) || '--:--'}</p>
-                        </div>
-                    </div>
-                    <div className="flex justify-between items-center gap-4">
-                        <button disabled={!!record?.checkIn} onClick={() => handleCheckInOutNow('checkIn')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700 ">立即簽到</button>
-                        <button disabled={!record?.checkIn || !!record?.checkOut} onClick={() => handleCheckInOutNow('checkOut')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700">立即簽退</button>
-                    </div>
-                    <div className="p-4 bg-gray-800 rounded-lg space-y-4 mt-16">
-                        <div className="grid grid-cols-2 gap-4">
+                {loading ? <div className="text-center p-8">正在載入紀錄...</div> : (
+                    <div className="space-y-6">
+                        <div className="bg-gray-800 p-4 rounded-lg text-center flex justify-around">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">修改簽到時間</label>
-                                <input type="time" value={checkInInput} onChange={e => setCheckInInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                <p className="text-base text-gray-400">資料庫簽到時間</p>
+                                <p className="text-2xl font-mono mt-1">{formatTime(record?.checkIn) || '--:--'}</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">修改簽退時間</label>
-                                <input type="time" value={checkOutInput} onChange={e => setCheckOutInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                <p className="text-base text-gray-400">資料庫簽退時間</p>
+                                <p className="text-2xl font-mono mt-1">{formatTime(record?.checkOut) || '--:--'}</p>
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">扣除時間 (分鐘)</label>
-                            <input type="number" value={deductionInput} onChange={e => setDeductionInput(e.target.value)} placeholder="例如: 30" className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                        <div className="flex justify-between items-center gap-4">
+                            <button disabled={!!record?.checkIn} onClick={() => handleCheckInOutNow('checkIn')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700 ">立即簽到</button>
+                            <button disabled={!record?.checkIn || !!record?.checkOut} onClick={() => handleCheckInOutNow('checkOut')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700">立即簽退</button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">備註</label>
-                            <textarea value={notesInput} onChange={e => setNotesInput(e.target.value)} rows={3} placeholder="例如: 事假、會議外出" className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                        <div className="p-4 bg-gray-800 rounded-lg space-y-4 mt-16">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">修改簽到時間</label>
+                                    <input type="time" value={checkInInput} onChange={e => setCheckInInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">修改簽退時間</label>
+                                    <input type="time" value={checkOutInput} onChange={e => setCheckOutInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">扣除時間 (分鐘)</label>
+                                <input type="number" value={deductionInput} onChange={e => setDeductionInput(e.target.value)} placeholder="例如: 30" className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">備註</label>
+                                <textarea value={notesInput} onChange={e => setNotesInput(e.target.value)} rows={3} placeholder="例如: 事假、會議外出" className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                            </div>
+                            <button onClick={handleSaveAllChanges} className="w-full bg-gray-700 font-bold py-2.5 px-4 rounded transition-colors hover:opacity-90">儲存修改</button>
                         </div>
-                        <button onClick={handleSaveAllChanges} className="w-full bg-gray-700 font-bold py-2.5 px-4 rounded transition-colors hover:opacity-90">儲存修改</button>
+                        <div className=' w-full h-32'></div>
                     </div>
-                    <div className=' w-full h-32'></div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

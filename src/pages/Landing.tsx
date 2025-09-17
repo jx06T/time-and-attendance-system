@@ -47,7 +47,7 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="text-center max-w-2xl mx-auto p-2 tracking-wide">
+        <div className="text-center max-w-2xl mx-auto p-2 px-4 tracking-wide">
             <h1 className="text-5xl font-bold mb-4 leading-16 tracking-wider">
                 歡迎來到<br />場佈打卡系統
             </h1>
@@ -62,7 +62,7 @@ const LandingPage = () => {
                         關於此系統
                     </h1>
                     此系統功依照使用者權限具有以下功能：
-                    <ol className='list-decimal list-outside ml-5 space-y-1 mt-1.5 ' >
+                    <ol className='list-decimal list-outside ml-6 space-y-1 mt-1.5 ' >
                         <li>
                             公開頁面
                             <br />

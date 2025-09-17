@@ -26,8 +26,8 @@ const AdminHomePage = () => {
       setLastUpdated(new Date().toISOString());
       addToast("使用者列表已更新！", "success");
     } catch (error: any) {
-      console.error("更新使用者列表失败:", error);
-      addToast(`更新使用者列表失败: ${error.message}`, "error");
+      console.error("更新使用者列表失敗:", error);
+      addToast(`更新使用者列表失敗: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -57,14 +57,17 @@ const AdminHomePage = () => {
     if (filteredUsers.length === 1) {
       navigate(`/admin/record/${filteredUsers[0].email}`);
     } else {
-      addToast("有多位使用者符合條件", "error");
+      if (filteredUsers.length === 0) {
+        addToast("無使用者符合條件", "error");
+      } else {
+        addToast("有多位使用者符合條件", "error");
+      }
     }
   };
 
 
   return (
-    <div className="flex flex-col items-center w-full pt-8">
-
+    <div className="flex flex-col items-center w-full pt-8 px-3">
       <div className=' w-full max-w-md mb-10'>
         <div className="w-full p-3 bg-gray-700 rounded-md mb-4 text-center h-12 text-xl">
           {input || '輸入班級座號'}
@@ -114,7 +117,7 @@ const AdminHomePage = () => {
         <button
           onClick={handleUpdateUsers}
           disabled={loading}
-          className=" inline-block border-2 border-accent-li bg-gray-800 p-3 px-6 text-base rounded 
+          className=" inline-block border-2 border-accent-li bg-gray-800 p-3 px-6 text-sm rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
