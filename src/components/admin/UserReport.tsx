@@ -218,7 +218,7 @@ function UserReport() {
                                                     <td className="p-3 px-4">{formatTime(record.checkOut)}</td>
                                                     <td className={`p-3 px-4 ${record.notes ? " cursor-pointer" : ""}`} onClick={() => {
                                                         if (record.notes) {
-                                                            addToast(`扣時原因：${record.notes}`,'success',100000)
+                                                            addToast(`備註：${record.notes}`,'success',100000)
                                                         }
                                                     }}>{(record.deductionMinutes || 0) + (record.notes ? " *" : "")}</td>
                                                     <td className="p-3 px-4 font-semibold">{hours > 0 ? hours.toFixed(2) : '-'}</td>
