@@ -181,7 +181,10 @@ const AdminRecordPage = () => {
                     </div>
                     <div className="relative">
                         <button
-                            onClick={() => datePickerRef.current?.showPicker()}
+                            onClick={() => {
+                                datePickerRef.current?.showPicker();
+                                datePickerRef.current?.click();
+                            }}
                             className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
                         >
                             {isToday ? "今日" : toLocalDateString(selectedDate)}
