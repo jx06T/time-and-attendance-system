@@ -87,7 +87,7 @@ function Header() {
                 ) :
                     <Link className=" border-2 border-accent-li text-accent-li cursor-pointer px-3 py-1.5 rounded text-sm transition-colors" to="/login">登入</Link>}
 
-                <button ref={MenuRef} className=' md:hidden block -mx-3.5' onClick={() => setShowMenu(!showMenu)}>
+                <button ref={MenuRef} className=' md:hidden block -mx-2' onClick={() => setShowMenu(!showMenu)}>
                     <Menu className=' text-neutral text-3xl' />
                 </button>
             </div>
