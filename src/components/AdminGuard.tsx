@@ -9,7 +9,7 @@ export function AdminGuard({ children }: { children: React.ReactElement }) {
     const { role, loading }: AuthStatus = useAuthStatus();
 
     if (loading) {
-        return <div className="flex items-center justify-center min-h-screen">正在驗證權限</div>;
+        return <div className="flex items-center justify-center min-h-screen text-neutral-100  grid-background">正在驗證權限...</div>;
     }
 
     if (role === UserRole.Admin || role === UserRole.SuperAdmin) {

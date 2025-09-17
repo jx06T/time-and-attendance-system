@@ -8,7 +8,7 @@ export function AuthGuard({ children }: { children: React.ReactElement }) {
     const { role, loading }: AuthStatus = useAuthStatus();
 
     if (loading) {
-        return <div className="flex items-center justify-center min-h-screen">正在驗證身分...</div>;
+        return <div className="flex items-center justify-center min-h-screen text-neutral-100  grid-background">正在驗證身分...</div>;
     }
 
     if (role !== UserRole.Visitor) {

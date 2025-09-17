@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuthStatus } from '../hooks/useAuthStatus';
@@ -7,6 +7,7 @@ import ImportUsers from '../components/admin/ImportUsers';
 import UserReport from '../components/admin/UserReport';
 import PermissionsManager from '../components/admin/PermissionsManager';
 import { UserRole } from '../types';
+import { useUsers } from '../context/UsersContext';
 
 
 type AdminTabKey = 'rankings' | 'userReport' | 'import' | 'permissions';
@@ -16,11 +17,12 @@ interface AdminTab {
     component: React.FC;
 }
 
-const AdminPage = () => {
+function AdminPage() {
     const { role } = useAuthStatus();
     const location = useLocation();
     const navigate = useNavigate();
 
+    const { fetchUsers } = useUsers();
     const availableTabs = useMemo((): AdminTab[] => {
         const tabs: AdminTab[] = [
             { key: 'rankings', label: '查看週報表', component: RankingsReport },
@@ -46,15 +48,8 @@ const AdminPage = () => {
 
     const ActiveComponent = availableTabs.find(tab => tab.key === activeTab)?.component;
 
-    useEffect(() => {
-        if (!availableTabs.some(tab => tab.key === currentTabKey)) {
-            navigate(`#${availableTabs[0].key}`, { replace: true });
-        }
-    }, [availableTabs, currentTabKey, navigate]);
-
-
     return (
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-6xl mx-auto px-4 relative">
             <h1 className="text-3xl font-bold mb-8 text-center">管理員後台</h1>
 
             <div className="flex border-b-2 border-gray-400 mb-8 overflow-x-auto">
@@ -70,11 +65,21 @@ const AdminPage = () => {
                         {tab.label}
                     </button>
                 ))}
+
             </div>
 
             <div className="animate-fade-in">
                 {ActiveComponent && <ActiveComponent />}
             </div>
+            <button
+                onClick={() => {
+                    fetchUsers()
+                    window.location.reload()
+                }}
+                className=" bottom-8 right-0 border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded text-base absolute"
+            >
+                更新使用者列表
+            </button>
         </div>
     );
 };
