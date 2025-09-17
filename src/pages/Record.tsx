@@ -194,7 +194,7 @@ const AdminRecordPage = () => {
                             ref={datePickerRef}
                             value={toLocalDateString(selectedDate)}
                             onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                            className="absolute top-0 left-0 cursor-pointer opacity-0 pointer-events-none"
+                            className="absolute top-0 left-0 cursor-pointer h-0"
                         />
                     </div>
                 </div>
