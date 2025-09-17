@@ -66,3 +66,13 @@ body * {
 .animate-progress {
   animation: progress linear;
 }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none; /* 隱藏小日曆圖示 */
+  -webkit-appearance: none;
+}
+
+/* Firefox */
+input[type="date"]::-moz-calendar-picker-indicator {
+  display: none;
+}

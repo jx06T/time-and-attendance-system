@@ -183,18 +183,20 @@ const AdminRecordPage = () => {
                         <button
                             onClick={() => {
                                 datePickerRef.current?.showPicker();
-                                datePickerRef.current?.click();
                             }}
                             className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
                         >
                             {isToday ? "今日" : toLocalDateString(selectedDate)}
                         </button>
                         <input
+                            onClick={() => {
+                                datePickerRef.current?.showPicker();
+                            }}
                             type="date"
                             ref={datePickerRef}
                             value={toLocalDateString(selectedDate)}
                             onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                            className="absolute top-0 left-0 cursor-pointer h-0"
+                            className="absolute top-0 left-0 right-0 bottom-0 opacity-50 z-10 bg-red-50"
                         />
                     </div>
                 </div>
