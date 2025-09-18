@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -25,7 +25,9 @@ const AdminHomePage = () => {
   const { allUsers, fetchUsers, lastUpdated } = useUsers();
 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isProcessingScan, setIsProcessingScan] = useState(false);
+
+  const processingRef = useRef(false);
+
   const { user: adminUser } = useAuth();
 
   const handleUpdateUsers = async () => {
@@ -70,15 +72,18 @@ const AdminHomePage = () => {
 
   // ================================================================
 
-  const handleScanSuccess = async (scannedEmail: string) => {
-    setIsScannerOpen(false);
-    setIsProcessingScan(true);
+  const handleScanSuccess = useCallback(async (scannedEmail: string) => {
+    if (processingRef.current) {
+      return
+    }
+    processingRef.current = true;
+    // setIsScannerOpen(false);
 
     const targetUser = allUsers.find(u => u.email === scannedEmail);
 
     if (!targetUser) {
       addToast(`錯誤：在資料庫中找不到 Email 為 "${scannedEmail}" 的使用者`, "error");
-      setIsProcessingScan(false);
+      processingRef.current = false;
       return;
     }
 
@@ -100,7 +105,9 @@ const AdminHomePage = () => {
           action = 'checkOut';
         } else {
           addToast(`${targetUser.name} 今日已完成所有打卡`);
-          setIsProcessingScan(false);
+          setTimeout(() => {
+            processingRef.current = false;
+          }, 1000);
           return;
         }
       }
@@ -108,11 +115,12 @@ const AdminHomePage = () => {
       createConfirmDialog({
         title: `確認${action === 'checkIn' ? '簽到' : '簽退'} - ${targetUser.name}`,
         message:
-          `班級座號: ${targetUser.classId} ${targetUser.seatNo}\n` +
-          `簽到時間: ${action === 'checkIn' ? `現在（${formatTime(Timestamp.now())}）` : formatTime(existingRecord?.checkIn)}\n` +
-          `簽退時間: ${action === 'checkOut' ? `現在（${formatTime(Timestamp.now())}）` : 'N/A'}`,
+          `班級座號：${targetUser.classId} ${targetUser.seatNo}\n` +
+          `簽到時間：${action === 'checkIn' ? `現在（${formatTime(Timestamp.now())}）` : formatTime(existingRecord?.checkIn)}\n` +
+          `簽退時間：${action === 'checkOut' ? `現在（${formatTime(Timestamp.now())}）` : 'N/A'}`,
         confirmText: `確認${action === 'checkIn' ? '簽到' : '簽退'}`,
         onConfirm: async () => {
+          processingRef.current = false;
           if (!adminUser) return;
 
           const recordDocRef = doc(db, 'timeRecords', `${targetUser.email}_${dateStr}`);
@@ -131,6 +139,7 @@ const AdminHomePage = () => {
           }
         },
         onCancel: () => {
+          processingRef.current = false;
           addToast("操作已取消");
         }
       });
@@ -138,9 +147,17 @@ const AdminHomePage = () => {
     } catch (error: any) {
       addToast(`查詢紀錄失敗: ${error.message}`, "error");
     } finally {
-      setIsProcessingScan(false);
     }
-  };
+  }, [allUsers, addToast, adminUser])
+
+  const handleScanError = useCallback((errorMessage: string) => {
+    if (errorMessage.includes("NotAllowedError") || errorMessage.includes("Permission denied")) {
+      processingRef.current = false;
+      setIsScannerOpen(false);
+      addToast("相機權限已被拒絕。請在瀏覽器設定中允許本網站使用相機。", "error");
+    }
+  }, [addToast]);
+
   // ================================================================
 
   useEffect(() => {
@@ -190,7 +207,7 @@ const AdminHomePage = () => {
         )}
       </div>
 
-      <div className="w-full max-w-md p-2 flex items-start gap-6 mt-2 ">
+      <div className="w-full max-w-md px-0 md:px-2 flex items-start gap-2 md:gap-6 mt-2 ">
         <input
           type="text"
           placeholder="輸入姓名搜尋"
@@ -200,13 +217,12 @@ const AdminHomePage = () => {
         />
         <button
           onClick={() => setIsScannerOpen(true)}
-          disabled={isProcessingScan}
           className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isProcessingScan ? <CiLoading className=' inline-block text-2xl' /> : <StreamlineScannerSolid className=' inline-block mb-1 text-lg' />}
+          <StreamlineScannerSolid className=' inline-block mb-1 text-lg' />
         </button>
         <button
           onClick={handleUpdateUsers}
@@ -227,9 +243,12 @@ const AdminHomePage = () => {
 
       <QRCodeScannerModal
         isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
+        onClose={() => {
+          processingRef.current = false;
+          setIsScannerOpen(false)
+        }}
         onScanSuccess={handleScanSuccess}
-        onScanError={(err) => { }}
+        onScanError={handleScanError}
       />
       <div className=' w-full h-32'></div>
     </div>

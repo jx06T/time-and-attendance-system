@@ -87,3 +87,15 @@ input[type="time"] {
 #reader{
   border: none !important;
 }
+
+#html5-qrcode-button-camera-permission,#html5-qrcode-button-camera-start{
+  @apply border-2 border-accent-li py-2 px-4 rounded-md my-2
+}
+
+#html5-qrcode-anchor-scan-type-change{
+  @apply text-sm text-gray-300
+}
+
+#reader__dashboard_section_csr{
+  @apply text-base mb-2
+}
