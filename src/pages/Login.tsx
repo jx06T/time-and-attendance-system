@@ -62,7 +62,7 @@ const LoginPage = () => {
 
     return (
         <div className="text-center max-w-2xl mx-auto p-2 tracking-wide">
-            <div className=' mt-20'>
+            <div className=' mt-16'>
                 <button onClick={handleGoogleLogin} className=" border-2 border-accent-li text-neutral font-bold py-3 px-6 rounded">
                     <DeviconGoogle className=' inline-block text-xl mb-1 mr-2' />使用 Google 登入
                 </button>
@@ -85,7 +85,7 @@ const LoginPage = () => {
                     <li>
                         無法登入?
                         <br />
-                        登入失敗請聯絡 50313tjx06@gmail.com 或詢問建中班聯活動長藍翊庭
+                        登入失敗請先嘗試使用預設瀏覽器開啟此網站，勿使用 Line 或是其他 app 的內建瀏覽器，並確認是否使用建中帳號（或其他已登記之帳號）進行登入。若問題未解決請聯絡建中班聯活動長藍翊庭（50313tjx06@gmail.com）
                     </li>
                 </ol>
             </div>
