@@ -40,7 +40,7 @@ export function createConfirmDialog({
         };
 
         return (
-            <div className="fixed inset-0 bg-brand-d/75 flex items-center justify-center z-50 animate-fade-in">
+            <div className="fixed inset-0 bg-brand-d/75 flex items-center justify-center z-50 animate-fade-in px-4">
                 <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl border border-gray-700">
                     <h3 className="text-xl font-bold mb-4 text-white">{title}</h3>
                     <p className="text-gray-300 mb-6 whitespace-pre-wrap">{message}</p>
