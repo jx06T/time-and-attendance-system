@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
 import { TimeRecord, UserProfile } from '../types';
 import { UserRole } from '../types';
 import { formatTime } from '../utils/tools'
 
 function ProfilePage() {
-  const { user, role, loading: authLoading } =  useAuth();
+  const { user, role, loading: authLoading } = useAuth();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [records, setRecords] = useState<TimeRecord[]>([]);
@@ -57,6 +57,12 @@ function ProfilePage() {
     }
   };
 
+  useEffect(() => {
+    document.title = '場佈打卡系統 | 個人頁面';
+    return () => {
+      document.title = '場佈打卡系統';
+    };
+  }, []);
 
   if (loading || authLoading) {
     return <p className="text-center p-8">正在載入個人資料...</p>;

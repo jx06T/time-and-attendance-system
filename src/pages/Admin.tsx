@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
 import RankingsReport from '../components/admin/RankingsReport';
 import ImportUsers from '../components/admin/ImportUsers';
 import UserReport from '../components/admin/UserReport';
@@ -18,7 +18,7 @@ interface AdminTab {
 }
 
 function AdminPage() {
-    const { role } =  useAuth();
+    const { role } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -47,6 +47,13 @@ function AdminPage() {
     };
 
     const ActiveComponent = availableTabs.find(tab => tab.key === activeTab)?.component;
+
+    useEffect(() => {
+        document.title = '場佈打卡系統 | 管理員面板';
+        return () => {
+            document.title = '場佈打卡系統';
+        };
+    }, []);
 
     return (
         <div className="max-w-6xl mx-auto px-4 relative">

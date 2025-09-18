@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NumericKeypad from '../components/NumericKeypad';
 import { useToast } from '../hooks/useToast';
@@ -11,7 +11,7 @@ const AdminHomePage = () => {
   const [input, setInput] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const { allUsers,fetchUsers ,lastUpdated} = useUsers();
+  const { allUsers, fetchUsers, lastUpdated } = useUsers();
 
 
   const handleUpdateUsers = async () => {
@@ -54,6 +54,12 @@ const AdminHomePage = () => {
     }
   };
 
+  useEffect(() => {
+    document.title = '場佈打卡系統 | 打卡頁面';
+    return () => {
+      document.title = '場佈打卡系統';
+    };
+  }, []);
 
   return (
     <div className="flex flex-col items-center w-full pt-8 px-3">

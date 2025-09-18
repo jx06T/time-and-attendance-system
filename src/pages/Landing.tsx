@@ -14,10 +14,10 @@ const LandingPage = () => {
             );
         }
 
-        if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+        if (role === UserRole.Admin || role === UserRole.Clocker  || role === UserRole.SuperAdmin) {
             return (
                 <Link
-                    to="/admin/dashboard"
+                    to="/admin"
                     className="border-2 border-accent-li text-accent-li cursor-pointer font-bold py-4 px-10 rounded-lg text-xl inline-block"
                 >
                     進行打卡操作

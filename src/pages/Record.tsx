@@ -36,11 +36,19 @@ const AdminRecordPage = () => {
 
     useEffect(() => {
         const dateStr = toLocalDateString(selectedDate);
-
         if (searchParams.get('date') !== dateStr) {
-            setSearchParams({ date: dateStr });
+            setSearchParams({ date: dateStr }, { replace: true });
         }
     }, [selectedDate, searchParams, setSearchParams]);
+
+    useEffect(() => {
+        const dateParam = searchParams.get('date');
+        if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+            if (dateParam !== toLocalDateString(selectedDate)) {
+                setSelectedDate(new Date(dateParam + 'T00:00:00'));
+            }
+        }
+    }, [searchParams]);
 
     const toLocalDateString = (date: Date): string => {
         const year = date.getFullYear();
@@ -183,6 +191,13 @@ const AdminRecordPage = () => {
         }
     };
 
+    useEffect(() => {
+        document.title = `場佈打卡系統 | 打卡頁面-${userProfile?.name || ""}`;
+        return () => {
+            document.title = '場佈打卡系統';
+        };
+    }, [userProfile]);
+
     if (loading && !userProfile) return <p className="text-center">正在載入使用者資料...</p>;
     if (!userProfile) return <p className="text-center text-red-400">找不到 Email 為 "{userEmail}" 的使用者資料。</p>;
 
@@ -191,7 +206,7 @@ const AdminRecordPage = () => {
             <div className="max-w-md w-full">
                 <div className="flex justify-between items-center mb-6">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/admin')}
                         className="flex items-center gap-2 border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700"
                     >
                         &larr; <span className="hidden sm:inline">返回</span>
