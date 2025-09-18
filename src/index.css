@@ -92,7 +92,7 @@ input[type="time"] {
 #html5-qrcode-button-camera-permission,
 #html5-qrcode-button-camera-start,
 #html5-qrcode-button-camera-stop {
-  @apply border-2 border-accent-li text-accent-li py-2 px-4 rounded-md mt-2 z-50 absolute left-1/2 top-0.5 -translate-x-1/2;
+  @apply border-2 border-accent-li text-accent-li py-2 px-4 rounded-md mt-2 z-50 absolute left-1/2 top-0.5 -translate-x-1/2 font-bold;
 }
 
 #html5-qrcode-anchor-scan-type-change {
