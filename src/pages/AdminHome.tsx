@@ -58,8 +58,8 @@ const AdminHomePage = () => {
   return (
     <div className="flex flex-col items-center w-full pt-8 px-3">
       <div className=' w-full max-w-md mb-10'>
-        <div className="w-full p-3 bg-gray-700 rounded-md mb-4 text-center h-12 text-xl">
-          {input || '輸入班級座號'}
+        <div className="w-full p-3.5 bg-gray-700 rounded-md mb-4 text-center h-14 text-xl">
+          {input || '使用下方數字鍵盤輸入班級座號'}
         </div>
 
         <NumericKeypad
