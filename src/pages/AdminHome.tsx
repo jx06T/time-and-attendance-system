@@ -113,9 +113,9 @@ const AdminHomePage = () => {
       }
 
       createConfirmDialog({
-        title: `確認${action === 'checkIn' ? '簽到' : '簽退'} - ${targetUser.name}`,
+        title: `確認 ${targetUser.name} ${action === 'checkIn' ? '簽到' : '簽退'}？`,
         message:
-          `班級座號：${targetUser.classId} ${targetUser.seatNo}\n` +
+          `班級座號：${targetUser.classId}  ${targetUser.seatNo}\n` +
           `簽到時間：${action === 'checkIn' ? `現在（ ${formatTime(Timestamp.now())} ）` : formatTime(existingRecord?.checkIn)}\n` +
           `簽退時間：${action === 'checkOut' ? `現在（ ${formatTime(Timestamp.now())} ）` : 'N/A'}`,
         confirmText: `確認${action === 'checkIn' ? '簽到' : '簽退'}`,
