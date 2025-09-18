@@ -82,8 +82,10 @@ const AdminHomePage = () => {
     const targetUser = allUsers.find(u => u.email === scannedEmail);
 
     if (!targetUser) {
-      addToast(`錯誤：在資料庫中找不到 Email 為 "${scannedEmail}" 的使用者`, "error");
-      processingRef.current = false;
+      addToast(`錯誤：找不到 Email 為 "${scannedEmail}" 的使用者`, "error");
+       setTimeout(() => {
+            processingRef.current = false;
+          }, 1000);
       return;
     }
 
