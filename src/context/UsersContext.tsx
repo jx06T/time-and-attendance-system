@@ -50,7 +50,7 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [setAllUsers, setLastUpdated]);
 
     useEffect(() => {
-        if (role === UserRole.Visitor) {
+        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin) {
             return
         }
         if (allUsers.length === 0) {

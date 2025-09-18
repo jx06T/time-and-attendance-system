@@ -72,12 +72,7 @@ function AdminPage() {
                 {ActiveComponent && <ActiveComponent />}
             </div>
             <button
-                onClick={() => {
-                    fetchUsers()
-                    setTimeout(() => {
-                        window.location.reload()
-                    }, 500);
-                }}
+                onClick={fetchUsers}
                 className=" bottom-8 right-0 border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded text-base absolute cursor-pointer"
             >
                 更新使用者列表
