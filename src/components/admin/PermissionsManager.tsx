@@ -115,6 +115,7 @@ function PermissionsManager() {
         if (!searchTerm) return combined;
         const lowercasedTerm = searchTerm.toLowerCase();
         return combined.filter(user => (
+            user.role.toLowerCase().includes(lowercasedTerm) ||
             user.name.toLowerCase().includes(lowercasedTerm) ||
             user.classId.toLowerCase().includes(lowercasedTerm) ||
             user.seatNo.toLowerCase().includes(lowercasedTerm) ||
