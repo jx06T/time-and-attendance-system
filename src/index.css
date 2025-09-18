@@ -78,24 +78,30 @@ input[type="date"]::-moz-calendar-picker-indicator {
 }
 
 input[type="time"] {
-    -webkit-appearance: none;
-    appearance: none;
-    box-sizing: border-box;
-    min-height: 40px;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  min-height: 40px;
 }
 
-#reader{
+#reader {
   border: none !important;
 }
 
-#html5-qrcode-button-camera-permission,#html5-qrcode-button-camera-start{
-  @apply border-2 border-accent-li py-2 px-4 rounded-md my-2
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop {
+  @apply border-2 border-accent-li py-2 px-4 rounded-md mt-2;
 }
 
-#html5-qrcode-anchor-scan-type-change{
-  @apply text-sm text-gray-300
+#html5-qrcode-anchor-scan-type-change {
+  @apply text-sm text-gray-300 mt-1;
 }
 
-#reader__dashboard_section_csr{
-  @apply text-base mb-2
+#reader__dashboard_section_csr {
+  @apply text-base mb-2;
+}
+
+#html5-qrcode-select-camera option {
+  @apply bg-gray-700;
 }
