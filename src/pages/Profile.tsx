@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy ,limit} from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuthStatus } from '../hooks/useAuthStatus';
 import { TimeRecord, UserProfile } from '../types';
@@ -28,7 +28,8 @@ function ProfilePage() {
         const recordsQuery = query(
           collection(db, 'timeRecords'),
           where('userEmail', '==', user.email),
-          orderBy('date', 'desc')
+          orderBy('date', 'desc'),
+          limit(25)
         );
         const recordsSnapshot = await getDocs(recordsQuery);
         const myRecords = recordsSnapshot.docs.map(doc => ({
@@ -51,7 +52,7 @@ function ProfilePage() {
       case UserRole.SuperAdmin: return '最高管理者';
       case UserRole.Admin: return '管理者';
       case UserRole.User: return '一般使用者';
-      default: return '访客';
+      default: return '訪客';
     }
   };
 
