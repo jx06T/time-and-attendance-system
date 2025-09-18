@@ -218,14 +218,14 @@ const AdminRecordPage = () => {
                             <button disabled={!record?.checkIn || !!record?.checkOut} onClick={() => handleCheckInOutNow('checkOut')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700">立即簽退</button>
                         </div>
                         <div className="p-4 bg-gray-800 rounded-lg space-y-4 mt-16">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 overflow-hidden">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">修改簽到時間</label>
-                                    <input type="time" value={checkInInput} onChange={e => setCheckInInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                    <input type="time" value={checkInInput} onChange={e => setCheckInInput(e.target.value)} className="w-full inline-block p-2 bg-gray-700 rounded border border-gray-600" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">修改簽退時間</label>
-                                    <input type="time" value={checkOutInput} onChange={e => setCheckOutInput(e.target.value)} className="w-full p-2 bg-gray-700 rounded border border-gray-600" />
+                                    <input type="time" value={checkOutInput} onChange={e => setCheckOutInput(e.target.value)} className="w-full inline-block p-2 bg-gray-700 rounded border border-gray-600" />
                                 </div>
                             </div>
                             <div>
