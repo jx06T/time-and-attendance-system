@@ -203,7 +203,7 @@ function ImportUsers() {
                         <p className="text-sm text-gray-500 mt-2">請確保 CSV 包含 `studentId`, `email`, `classId`, `seatNo`, `name` 欄位。</p>
                     </div>
 
-                    {isProcessing && <p className="text-center text-yellow-400 mb-4">處理中...</p>}
+                    {isProcessing && <p className="text-center text-neutral mb-4">處理中...</p>}
                     {previewData.length > 0 && !isProcessing && (
                         <div className="animate-fade-in">
                             <h4 className="font-bold mb-2">預覽資料 ({previewData.length} 筆):</h4>
@@ -217,7 +217,7 @@ function ImportUsers() {
                                     <tbody>
                                         {previewData.map((user) => (
                                             <tr key={user.previewId}>
-                                                <td className="p-3 px-4"><span className={`rounded ${user.status === 'new' ? 'bg-green-700' : ' text-accent-li'}`}>{user.status === 'new' ? '新增' : '更新'}</span></td>
+                                                <td className="p-3 px-4"><span className={`rounded ${user.status === 'new' ? 'text-green-500' : ' text-accent-li'}`}>{user.status === 'new' ? '新增' : '更新'}</span></td>
                                                 <td className="p-3 px-4">{user.email}</td><td className="p-3 px-4">{user.classId}</td><td className="p-3 px-4">{user.seatNo}</td><td className="p-3 px-4">{user.name}</td>
                                                 <td className="p-3 px-4"><button onClick={() => handleRemoveFromPreview(user.previewId)} className="text-red-500 cursor-pointer">移除</button></td>
                                             </tr>
