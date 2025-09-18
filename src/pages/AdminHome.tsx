@@ -72,20 +72,22 @@ const AdminHomePage = () => {
 
   // ================================================================
 
-  const handleScanSuccess = useCallback(async (scannedEmail: string) => {
+  const handleScanSuccess = useCallback(async (scannedText: string) => {
     if (processingRef.current) {
       return
     }
     processingRef.current = true;
     // setIsScannerOpen(false);
+    const match = scannedText.match(/\/record\/([^/]+)$/);
+    const scannedEmail = match ? match[1] : null;
 
     const targetUser = allUsers.find(u => u.email === scannedEmail);
 
     if (!targetUser) {
       addToast(`錯誤：找不到 Email 為 "${scannedEmail}" 的使用者`, "error");
-       setTimeout(() => {
-            processingRef.current = false;
-          }, 1000);
+      setTimeout(() => {
+        processingRef.current = false;
+      }, 1000);
       return;
     }
 
