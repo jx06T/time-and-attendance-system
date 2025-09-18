@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, Timestamp, collection, query, where, getDocs } fro
 import { db } from '../firebase';
 import { TimeRecord, UserProfile, UserRole } from '../types';
 import { useToast } from '../hooks/useToast';
-import { formatTime } from '../utils/tools'
+import { formatTime, toLocalDateString } from '../utils/tools'
 import { useAuth } from '../context/AuthContext';
 
 const AdminRecordPage = () => {
@@ -50,13 +50,7 @@ const AdminRecordPage = () => {
         }
     }, [searchParams]);
 
-    const toLocalDateString = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
 
-        return `${year}-${month}-${day}`;
-    };
     const isToday = toLocalDateString(selectedDate) === toLocalDateString(new Date());
 
     const fetchData = useCallback(async () => {

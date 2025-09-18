@@ -6,6 +6,8 @@ import { TimeRecord, UserProfile } from '../types';
 import { UserRole } from '../types';
 import { formatTime } from '../utils/tools'
 
+import UserProfileQRCode from '../components/UserProfileQRCode';
+
 function ProfilePage() {
   const { user, role, loading: authLoading } = useAuth();
 
@@ -75,70 +77,81 @@ function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto px-4">
       <h1 className="text-3xl font-bold mb-8 text-center">個人檔案</h1>
+      <div className=' space-y-8'>
+        <div>
+          <h2 className="text-xl font-bold text-neutral mb-4 text-left">基本資料</h2>
 
-      <h2 className="text-xl font-bold text-neutral mb-4 text-left">基本資料</h2>
+          <div className="bg-gray-800 p-6 rounded-lg mb-8">
+            {userProfile ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+                <div>
+                  <p className="text-sm text-gray-400 mb-0.5">班級</p>
+                  <p className="text-lg">{userProfile.classId}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-0.5">座號</p>
+                  <p className="text-lg">{userProfile.seatNo}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-0.5">姓名</p>
+                  <p className="text-lg">{userProfile.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-0.5">身份</p>
+                  <p className="text-lg text-accent-li">{getRoleDisplayName(role)}</p>
+                </div>
+              </div>
+            ) : (
+              <p>未找到資料</p>
+            )}
+          </div>
+        </div>
 
-      <div className="bg-gray-800 p-6 rounded-lg mb-8">
-        {userProfile ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-            <div>
-              <p className="text-sm text-gray-400 mb-0.5">班級</p>
-              <p className="text-lg">{userProfile.classId}</p>
+        <div >
+          <h2 className="text-xl font-bold text-neutral mb-4 text-left">打卡紀錄</h2>
+          {records.length === 0 ? (
+            <p className="text-center text-gray-400 bg-gray-800 p-6 rounded-lg">目前沒有任何打卡紀錄。</p>
+          ) : (
+            <div className="bg-gray-800 rounded-lg overflow-x-auto p-6 py-3">
+              <table className="w-full text-left">
+                <thead className="bg-gray-800 border-b-2 border-accent">
+                  <tr>
+                    <th className="py-3">日期</th>
+                    <th className="py-3">簽到時間</th>
+                    <th className="py-3">簽退時間</th>
+                    <th className="py-3">時數</th>
+                  </tr>
+                </thead>
+                <tbody className=' group'>
+                  {records.map(record => {
+                    let totalHours = 0;
+                    if (record.checkIn && record.checkOut) {
+                      const deductionMillis = (record.deductionMinutes || 0) * 60 * 1000;
+                      const durationMillis = record.checkOut.toMillis() - record.checkIn.toMillis() - deductionMillis;
+                      totalHours = Math.max(0, durationMillis / (1000 * 60 * 60));
+                    }
+                    return (
+                      <tr key={record.id} className=" not-last:border-b border-accent ">
+                        <td className="py-3">{record.date}</td>
+                        <td className="py-3 font-mono">{formatTime(record.checkIn)}</td>
+                        <td className="py-3 font-mono">{formatTime(record.checkOut)}</td>
+                        <td className="py-3 font-mono">{totalHours > 0 ? totalHours.toFixed(2) : '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-0.5">座號</p>
-              <p className="text-lg">{userProfile.seatNo}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-0.5">姓名</p>
-              <p className="text-lg">{userProfile.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-0.5">身份</p>
-              <p className="text-lg text-accent-li">{getRoleDisplayName(role)}</p>
+          )}
+        </div>
+        {user?.email &&
+          <div>
+            <h2 className='text-xl font-bold text-neutral mb-4 text-left'>QR Code</h2>
+            <div className=' flex flex-col items-center'>
+              <UserProfileQRCode value={user.email} />
             </div>
           </div>
-        ) : (
-          <p>未找到資料</p>
-        )}
-      </div>
-
-      <div>
-        <h2 className="text-xl font-bold text-neutral mb-4 text-left">打卡紀錄</h2>
-        {records.length === 0 ? (
-          <p className="text-center text-gray-400 bg-gray-800 p-6 rounded-lg">目前沒有任何打卡紀錄。</p>
-        ) : (
-          <div className="bg-gray-800 rounded-lg overflow-x-auto p-6 py-3">
-            <table className="w-full text-left">
-              <thead className="bg-gray-800 border-b-2 border-accent">
-                <tr>
-                  <th className="py-3">日期</th>
-                  <th className="py-3">簽到時間</th>
-                  <th className="py-3">簽退時間</th>
-                  <th className="py-3">時數</th>
-                </tr>
-              </thead>
-              <tbody className=' group'>
-                {records.map(record => {
-                  let totalHours = 0;
-                  if (record.checkIn && record.checkOut) {
-                    const deductionMillis = (record.deductionMinutes || 0) * 60 * 1000;
-                    const durationMillis = record.checkOut.toMillis() - record.checkIn.toMillis() - deductionMillis;
-                    totalHours = Math.max(0, durationMillis / (1000 * 60 * 60));
-                  }
-                  return (
-                    <tr key={record.id} className=" not-last:border-b border-accent ">
-                      <td className="py-3">{record.date}</td>
-                      <td className="py-3 font-mono">{formatTime(record.checkIn)}</td>
-                      <td className="py-3 font-mono">{formatTime(record.checkOut)}</td>
-                      <td className="py-3 font-mono">{totalHours > 0 ? totalHours.toFixed(2) : '-'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        }
       </div>
       <div className="w-full h-32"></div>
     </div>

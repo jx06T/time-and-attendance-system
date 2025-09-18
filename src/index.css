@@ -83,3 +83,7 @@ input[type="time"] {
     box-sizing: border-box;
     min-height: 40px;
 }
+
+#reader{
+  border: none !important;
+}

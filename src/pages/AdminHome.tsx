@@ -1,8 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+import { TimeRecord, UserProfile } from '../types';
+
 import NumericKeypad from '../components/NumericKeypad';
+import QRCodeScannerModal from '../components/QRCodeScannerModal';
+import { formatTime, toLocalDateString } from '../utils/tools'
+
 import { useToast } from '../hooks/useToast';
 import { useUsers } from '../context/UsersContext';
+import { createConfirmDialog } from '../utils/createConfirmDialog';
+
+import { useAuth } from '../context/AuthContext';
+import { StreamlineScannerSolid, CiLoading, IcRoundSync } from '../assets/Icons';
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
@@ -13,6 +24,9 @@ const AdminHomePage = () => {
   const [loading, setLoading] = useState(false);
   const { allUsers, fetchUsers, lastUpdated } = useUsers();
 
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
+  const { user: adminUser } = useAuth();
 
   const handleUpdateUsers = async () => {
     setLoading(true);
@@ -53,6 +67,81 @@ const AdminHomePage = () => {
       }
     }
   };
+
+  // ================================================================
+
+  const handleScanSuccess = async (scannedEmail: string) => {
+    setIsScannerOpen(false);
+    setIsProcessingScan(true);
+
+    const targetUser = allUsers.find(u => u.email === scannedEmail);
+
+    if (!targetUser) {
+      addToast(`錯誤：在資料庫中找不到 Email 為 "${scannedEmail}" 的使用者`, "error");
+      setIsProcessingScan(false);
+      return;
+    }
+
+    try {
+      const dateStr = toLocalDateString(new Date());
+      const recordQuery = query(collection(db, 'timeRecords'), where('userEmail', '==', scannedEmail), where('date', '==', dateStr));
+      const recordSnapshot = await getDocs(recordQuery);
+
+      let action: 'checkIn' | 'checkOut';
+      let existingRecord: TimeRecord | undefined;
+
+      if (recordSnapshot.empty) {
+        action = 'checkIn';
+      } else {
+        const recordDoc = recordSnapshot.docs[0];
+        existingRecord = { id: recordDoc.id, ...recordDoc.data() } as TimeRecord;
+
+        if (existingRecord.checkIn && !existingRecord.checkOut) {
+          action = 'checkOut';
+        } else {
+          addToast(`${targetUser.name} 今日已完成所有打卡`);
+          setIsProcessingScan(false);
+          return;
+        }
+      }
+
+      createConfirmDialog({
+        title: `確認${action === 'checkIn' ? '簽到' : '簽退'} - ${targetUser.name}`,
+        message:
+          `班級座號: ${targetUser.classId} ${targetUser.seatNo}\n` +
+          `簽到時間: ${action === 'checkIn' ? `現在（${formatTime(Timestamp.now())}）` : formatTime(existingRecord?.checkIn)}\n` +
+          `簽退時間: ${action === 'checkOut' ? `現在（${formatTime(Timestamp.now())}）` : 'N/A'}`,
+        confirmText: `確認${action === 'checkIn' ? '簽到' : '簽退'}`,
+        onConfirm: async () => {
+          if (!adminUser) return;
+
+          const recordDocRef = doc(db, 'timeRecords', `${targetUser.email}_${dateStr}`);
+          const nowTimestamp = Timestamp.now();
+
+          try {
+            if (action === 'checkIn') {
+              await setDoc(recordDocRef, { checkIn: nowTimestamp, userEmail: targetUser.email, date: dateStr, checkInRecorderUid: adminUser.uid }, { merge: true });
+              addToast(`${targetUser.name} 簽到成功！`, "success");
+            } else {
+              await setDoc(recordDocRef, { checkOut: nowTimestamp, checkOutRecorderUid: adminUser.uid }, { merge: true });
+              addToast(`${targetUser.name} 簽退成功！`, "success");
+            }
+          } catch (error: any) {
+            addToast(`操作失敗: ${error.message}`, 'error');
+          }
+        },
+        onCancel: () => {
+          addToast("操作已取消");
+        }
+      });
+
+    } catch (error: any) {
+      addToast(`查詢紀錄失敗: ${error.message}`, "error");
+    } finally {
+      setIsProcessingScan(false);
+    }
+  };
+  // ================================================================
 
   useEffect(() => {
     document.title = '場佈打卡系統 | 打卡頁面';
@@ -110,14 +199,24 @@ const AdminHomePage = () => {
           className="w-full sm:w-auto flex-grow p-2 bg-gray-700 border border-gray-600 rounded text-white"
         />
         <button
-          onClick={handleUpdateUsers}
-          disabled={loading}
-          className=" inline-block border-2 border-accent-li bg-gray-800 p-3 px-6 text-sm rounded 
+          onClick={() => setIsScannerOpen(true)}
+          disabled={isProcessingScan}
+          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? '更新中...' : '更新使用者資料'}
+          {isProcessingScan ? <CiLoading className=' inline-block text-2xl' /> : <StreamlineScannerSolid className=' inline-block mb-1 text-lg' />}
+        </button>
+        <button
+          onClick={handleUpdateUsers}
+          disabled={loading}
+          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 rounded 
+                                   hover:bg-gray-700 text-neutral 
+                                   transition-colors duration-200 
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? <CiLoading className=' inline-block text-2xl' /> : <IcRoundSync className=' inline-block text-2xl' />}
         </button>
       </div>
       {lastUpdated && (
@@ -125,6 +224,13 @@ const AdminHomePage = () => {
           使用者列表上次更新於: {new Date(lastUpdated).toLocaleString()}
         </p>
       )}
+
+      <QRCodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+        onScanError={(err) => { }}
+      />
       <div className=' w-full h-32'></div>
     </div>
   );
