@@ -91,7 +91,7 @@ input[type="time"] {
 #html5-qrcode-button-camera-permission,
 #html5-qrcode-button-camera-start,
 #html5-qrcode-button-camera-stop {
-  @apply border-2 border-accent-li py-2 px-4 rounded-md mt-2;
+  @apply border-2 border-accent-li py-2 px-4 rounded-md mt-2 z-50;
 }
 
 #html5-qrcode-anchor-scan-type-change {
@@ -104,4 +104,8 @@ input[type="time"] {
 
 #html5-qrcode-select-camera option {
   @apply bg-gray-700;
+}
+
+#reader__scan_region {
+  max-height: 80% !important;
 }

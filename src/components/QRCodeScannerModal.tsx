@@ -70,7 +70,7 @@ const QRCodeScannerModal = ({ isOpen, onClose, onScanSuccess, onScanError }: QRC
     return (
         <div className="fixed inset-0 bg-gray-700/60 flex flex-col items-center justify-center z-50 pb-6">
             <div className="bg-gray-800 rounded-md overflow-hidden w-full max-w-lg m-4 p-3 py-4 pb-2 shadow-lg">
-                <div id="reader" className="w-full h-[60vh]"></div>
+                <div id="reader" className="w-full max-h-[60vh]"></div>
                 <p className="text-white text-center p-3 py-2 mb-2">請將 QR Code 對準掃描框</p>
             </div>
             <button
