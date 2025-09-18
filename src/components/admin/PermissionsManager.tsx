@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, use } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { useAuthStatus } from '../../hooks/useAuthStatus';
+import { useAuth } from '../../context/AuthContext';
 import { UserRole, UserProfile } from '../../types';
 import { useUsers } from '../../context/UsersContext';
 import BasicSelect, { SelectOption } from '../ui/BasicSelect';
@@ -14,7 +14,7 @@ const DELETE_ACTION_VALUE = 'delete_user_action';
 
 function PermissionsManager() {
     const { addToast } = useToast();
-    const { user: currentUser } = useAuthStatus();
+    const { user: currentUser } = useAuth();
     const { allUsers, fetchUsers, loading: usersLoading } = useUsers();
 
     const [adminRoles, setAdminRoles] = useState<Map<string, UserRole>>(new Map());
@@ -29,7 +29,7 @@ function PermissionsManager() {
                 const adminsSnapshot = await getDocs(collection(db, 'admins'));
                 const rolesMap = new Map<string, UserRole>();
                 adminsSnapshot.forEach(doc => {
-                    const role = doc.data().role === 'superadmin' ? UserRole.SuperAdmin : UserRole.Admin;
+                    const role = doc.data().role;
                     rolesMap.set(doc.id, role);
                 });
                 setAdminRoles(rolesMap);
@@ -89,7 +89,7 @@ function PermissionsManager() {
             const newRole = selectedValue as UserRole;
             try {
                 const adminDocRef = doc(db, 'admins', targetUser.uid);
-                if (newRole === UserRole.Admin || newRole === UserRole.SuperAdmin) {
+                if (newRole === UserRole.Admin || newRole === UserRole.Clocker || newRole === UserRole.SuperAdmin) {
                     await setDoc(adminDocRef, { role: newRole });
                 } else {
                     await deleteDoc(adminDocRef);
@@ -110,14 +110,15 @@ function PermissionsManager() {
     };
 
     const displayUsers = useMemo((): UserWithRole[] => {
+        console.log(adminRoles, allUsers)
         const combined = allUsers.map(user => ({ ...user, role: adminRoles.get(user.uid!) || UserRole.User }));
         if (!searchTerm) return combined;
         const lowercasedTerm = searchTerm.toLowerCase();
         return combined.filter(user => (
-            user.name.toLowerCase().includes(lowercasedTerm)||
-            user.classId.toLowerCase().includes(lowercasedTerm)||
-            user.seatNo.toLowerCase().includes(lowercasedTerm)||
-            user.email.toLowerCase().includes(lowercasedTerm)||
+            user.name.toLowerCase().includes(lowercasedTerm) ||
+            user.classId.toLowerCase().includes(lowercasedTerm) ||
+            user.seatNo.toLowerCase().includes(lowercasedTerm) ||
+            user.email.toLowerCase().includes(lowercasedTerm) ||
             `${user.classId}${user.seatNo}`.startsWith(lowercasedTerm))
         );
     }, [allUsers, adminRoles, searchTerm]);
@@ -140,6 +141,7 @@ function PermissionsManager() {
                                 ];
 
                                 if (user.uid) {
+                                    baseOptions.push({ value: UserRole.Clocker, label: '打卡負責人' });
                                     baseOptions.push({ value: UserRole.Admin, label: '管理者' });
                                     baseOptions.push({ value: UserRole.SuperAdmin, label: '最高管理者' });
                                 }
@@ -147,14 +149,14 @@ function PermissionsManager() {
                                 baseOptions.push({
                                     value: DELETE_ACTION_VALUE,
                                     label: '刪除使用者！',
-                                    className: 'font-bold bg-red-600 hover:bg-red-700', // 自定义样式
+                                    className: 'font-bold bg-red-600 hover:bg-red-700', // 自訂樣式
                                 });
 
                                 return (
                                     <tr key={user.id} className="not-last:border-b border-gray-700">
                                         <td className="p-3 px-4 h-14">{user.name}</td>
                                         <td className="p-3 px-4">{user.email}</td>
-                                        <td className="p-3 px-4"><span className={`px-2 py-1 text-xs rounded font-semibold ${user.role === UserRole.SuperAdmin ? 'bg-red-700 text-red-200' : user.role === UserRole.Admin ? 'bg-yellow-700 text-yellow-200' : 'bg-gray-600 text-gray-200'}`}>{user.role}</span></td>
+                                        <td className="p-3 px-4"><span className={`px-2 py-1 text-xs rounded font-semibold ${user.role === UserRole.SuperAdmin ? 'bg-red-700 text-red-50' : user.role === UserRole.Admin ? 'bg-accent-li/90 text-neutral' : user.role === UserRole.Clocker ? 'bg-accent-li/40 text-neutral' : 'bg-gray-600 text-gray-200'}`}>{user.role}</span></td>
                                         <td className="p-3 px-4">
                                             {processingId === user.id ? (<span>處理中...</span>) : (
                                                 <BasicSelect

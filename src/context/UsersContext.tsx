@@ -3,7 +3,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { useAuthStatus } from '../hooks/useAuthStatus';
+import { useAuth } from '../context/AuthContext'; 
 import { UserRole } from '../types';
 import { useToast } from '../hooks/useToast';
 
@@ -18,7 +18,7 @@ interface UsersContextType {
 const UsersContext = createContext<UsersContextType | undefined>(undefined);
 
 export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { role } = useAuthStatus();
+    const { role } =  useAuth();
 
     const [allUsers, setAllUsers] = useLocalStorage<UserProfile[]>('allUsers', []);
     const [lastUpdated, setLastUpdated] = useLocalStorage<string | null>('usersLastUpdated', null);
@@ -26,7 +26,7 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { addToast } = useToast();
 
     const fetchUsers = useCallback(async () => {
-        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin) {
+        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin && role !== UserRole.Clocker) {
             return
         }
         setLoading(true);
@@ -50,7 +50,7 @@ export const UsersProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [setAllUsers, setLastUpdated]);
 
     useEffect(() => {
-        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin) {
+        if (role !== UserRole.Admin && role !== UserRole.SuperAdmin && role !== UserRole.Clocker) {
             return
         }
         if (allUsers.length === 0) {

@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { useAuthStatus } from '../hooks/useAuthStatus';
+import { useAuth } from '../context/AuthContext'; 
 import { UserRole } from '../types';
 import TopThreeChart from '../components/TopThreeChart';
 
 
 const LandingPage = () => {
-    const { user, role, loading } = useAuthStatus();
+    const { user, role, loading } =  useAuth();
 
     const renderAction = () => {
         if (loading) {

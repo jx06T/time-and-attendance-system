@@ -49,7 +49,7 @@ function BasicSelect({ options, value, onChange, disabled }: CustomSelectProps) 
             </button>
 
             {isOpen && !disabled && (
-                <div className="absolute z-10 w-full mt-0.5 bg-gray-700 rounded-md shadow-lg ">
+                <div className="absolute z-10 w-full mt-0.5 bg-gray-700 rounded-md shadow-lg left-2 ">
                     <ul className="space-y-0.5">
                         {options.map(option => (
                             <li
@@ -57,7 +57,7 @@ function BasicSelect({ options, value, onChange, disabled }: CustomSelectProps) 
                                 onClick={() => handleSelect(option.value)}
                                 className={`
                                     px-3 py-1.5 text-sm cursor-pointer
-                                    ${value === option.value ? 'border-accent-li border-2 rounded text-white hover:bg-gray-700' : 'text-gray-200 hover:bg-gray-700 rounded'}
+                                    ${value === option.value ? 'border-accent-li border-2 rounded text-white hover:bg-gray-800' : 'text-gray-200 hover:bg-gray-800 rounded'}
                                     ${option.className || ''}
                                 `}
                             >

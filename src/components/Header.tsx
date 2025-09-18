@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 
-import { useAuthStatus } from '../hooks/useAuthStatus';
+import { useAuth } from '../context/AuthContext'; 
 import { UserRole } from '../types';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -10,7 +10,7 @@ import { useToast } from '../hooks/useToast';
 import { Menu } from '../assets/Icons'
 
 function Header() {
-    const { user, role, loading } = useAuthStatus();
+    const { user, role, loading } =  useAuth();
     const [showMenu, setShowMenu] = useState(false)
     const navigate = useNavigate();
     const { addToast } = useToast();
@@ -42,11 +42,20 @@ function Header() {
     const renderNavLinks = () => {
         if (loading) return null;
 
+        if (role === UserRole.Clocker) {
+            return (
+                <>
+                    <Link to="/admin">打卡</Link>
+                    <a className='' href="https://github.com/jx06T/time-and-attendance-system">Github</a>
+                </>
+            );
+        }
+
         if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
             return (
                 <>
-                    <Link to="/admin/dashboard">打卡</Link>
-                    <Link to="/admin/reports">管理面板</Link>
+                    <Link to="/admin">打卡</Link>
+                    <Link to="/admin/dashboard">管理面板</Link>
                     <a className='' href="https://github.com/jx06T/time-and-attendance-system">Github</a>
                 </>
             );

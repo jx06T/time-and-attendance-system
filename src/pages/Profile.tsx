@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy ,limit} from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuthStatus } from '../hooks/useAuthStatus';
+import { useAuth } from '../context/AuthContext'; 
 import { TimeRecord, UserProfile } from '../types';
 import { UserRole } from '../types';
 import { formatTime } from '../utils/tools'
 
 function ProfilePage() {
-  const { user, role, loading: authLoading } = useAuthStatus();
+  const { user, role, loading: authLoading } =  useAuth();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [records, setRecords] = useState<TimeRecord[]>([]);
@@ -51,6 +51,7 @@ function ProfilePage() {
     switch (userRole) {
       case UserRole.SuperAdmin: return '最高管理者';
       case UserRole.Admin: return '管理者';
+      case UserRole.Clocker: return '打卡負責人';
       case UserRole.User: return '一般使用者';
       default: return '訪客';
     }

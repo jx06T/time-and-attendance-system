@@ -18,7 +18,7 @@ const AdminHomePage = () => {
     setLoading(true);
     try {
       fetchUsers()
-      addToast("使用者列表已更新！", "success");
+      // addToast("使用者列表已更新！", "success");
     } catch (error: any) {
       console.error("更新使用者列表失敗:", error);
       addToast(`更新使用者列表失敗: ${error.message}`, "error");

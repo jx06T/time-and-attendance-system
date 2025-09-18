@@ -8,21 +8,22 @@ import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
 import NotFoundPage from './pages/NotFound';
 
-import { AuthGuard } from './components/AuthGuard';
-import { AdminGuard } from './components/AdminGuard';
-
+import { UserRole } from './types';
+import { AuthorizationGuard } from './components/AuthorizationGuard';
 
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Layout><LoginPage /></Layout>} />
-      <Route path="/" element={<Layout><LandingPage /> </Layout>} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
 
       <Route
         element={
-          <AuthGuard>
-            <Layout />
-          </AuthGuard>
+          <AuthorizationGuard
+            allowedRoles={[UserRole.User, UserRole.Clocker, UserRole.Admin, UserRole.SuperAdmin]}
+          />
         }
       >
         <Route path="/profile" element={<ProfilePage />} />
@@ -30,15 +31,23 @@ function App() {
 
       <Route
         element={
-          <AdminGuard>
-            <Layout />
-          </AdminGuard>
+          <AuthorizationGuard
+            allowedRoles={[UserRole.Clocker, UserRole.Admin, UserRole.SuperAdmin]}
+          />
         }
       >
         <Route path="/admin" element={<AdminHomePage />} />
-        <Route path="/admin/dashboard" element={<AdminHomePage />} />
-        <Route path="/admin/reports" element={<AdminPage />} />
         <Route path="/admin/record/:userEmail" element={<RecordPage />} />
+      </Route>
+
+      <Route
+        element={
+          <AuthorizationGuard
+            allowedRoles={[UserRole.Admin, UserRole.SuperAdmin]}
+          />
+        }
+      >
+        <Route path="/admin/dashboard" element={<AdminPage />} />
       </Route>
 
       <Route path='*' element={<Layout><NotFoundPage /></Layout>} />

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useAuthStatus } from '../hooks/useAuthStatus';
+import { useAuth } from '../context/AuthContext'; 
 import RankingsReport from '../components/admin/RankingsReport';
 import ImportUsers from '../components/admin/ImportUsers';
 import UserReport from '../components/admin/UserReport';
@@ -18,7 +18,7 @@ interface AdminTab {
 }
 
 function AdminPage() {
-    const { role } = useAuthStatus();
+    const { role } =  useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
