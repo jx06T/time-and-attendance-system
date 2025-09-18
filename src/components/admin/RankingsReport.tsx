@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, getDocs, Timestamp, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
@@ -43,6 +43,7 @@ function RankingsReport() {
     const { allUsers } = useUsers();
     const { addToast } = useToast();
     const [isPublishing, setIsPublishing] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchRankings = async () => {
@@ -139,6 +140,19 @@ function RankingsReport() {
         });
     };
 
+    const displayRankings = useMemo((): Ranking[] => {
+        if (!searchTerm) return rankings;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return rankings.filter(user => (
+            user.name.toLowerCase().includes(lowercasedTerm) ||
+            user.classId.toLowerCase().includes(lowercasedTerm) ||
+            user.seatNo.toLowerCase().includes(lowercasedTerm) ||
+            user.email.toLowerCase().includes(lowercasedTerm) ||
+            `${user.classId}${user.seatNo}`.startsWith(lowercasedTerm))
+        );
+    }, [allUsers, rankings, searchTerm]);
+
+
     const chartOptions = {
         responsive: true,
         plugins: {
@@ -206,14 +220,15 @@ function RankingsReport() {
 
                     <div className="bg-gray-800 p-4 rounded-lg">
                         <h3 className="text-xl font-bold mb-4">詳細報表</h3>
+                        <input type="text" placeholder="按關鍵字搜尋使用者..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded mb-4" />
                         <ul className="space-y-3">
-                            {rankings.map((user, index) => (
+                            {displayRankings.map((user, index) => (
                                 <li key={user.id || user.email} className={`p-2 rounded border border-accent-li bg-opacity-30 `}>
                                     <span className=" text-neutral mr-2">{index + 1}. {user.name}</span>
                                     <span className="text-gray-300">－ {user.totalHours.toFixed(2)} 小時</span>
                                 </li>
                             ))}
-                            {rankings.length === 0 && <p className="text-gray-500">該週無打卡紀錄</p>}
+                            {displayRankings.length === 0 && <p className="text-gray-500">該週無打卡紀錄</p>}
                         </ul>
                         <div className=" mt-4">
                             <button

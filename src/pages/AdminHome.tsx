@@ -1,11 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
-import { UserProfile } from '../types';
-import useLocalStorage from '../hooks/useLocalStorage';
 import NumericKeypad from '../components/NumericKeypad';
 import { useToast } from '../hooks/useToast';
+import { useUsers } from '../context/UsersContext';
 
 const AdminHomePage = () => {
   const navigate = useNavigate();
@@ -14,16 +11,13 @@ const AdminHomePage = () => {
   const [input, setInput] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [allUsers, setAllUsers] = useLocalStorage<UserProfile[]>('allUsers', []);
-  const [lastUpdated, setLastUpdated] = useLocalStorage<string | null>('usersLastUpdated', null);
+  const { allUsers,fetchUsers ,lastUpdated} = useUsers();
+
 
   const handleUpdateUsers = async () => {
     setLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, 'users'));
-      const users = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-      setAllUsers(users);
-      setLastUpdated(new Date().toISOString());
+      fetchUsers()
       addToast("使用者列表已更新！", "success");
     } catch (error: any) {
       console.error("更新使用者列表失敗:", error);
@@ -37,17 +31,12 @@ const AdminHomePage = () => {
     if (!input) {
       return allUsers;
     }
-
-    // return allUsers.filter(user => {
-    //   const combinedId = `${user.classId}${user.seatNo}`;
-    //   return combinedId.startsWith(input);
-    // });
-
     const cleanedSearchTerm = input.trim().toLowerCase();
 
     return allUsers.filter(user =>
       user.classId.toLowerCase().includes(cleanedSearchTerm) ||
       user.name.toLowerCase().includes(cleanedSearchTerm) ||
+      user.email.toLowerCase().includes(cleanedSearchTerm) ||
       user.seatNo.toLowerCase().includes(cleanedSearchTerm) ||
       `${user.classId}${user.seatNo}`.startsWith(cleanedSearchTerm)
     );

@@ -31,19 +31,13 @@ ChartJS.register(
 );
 
 function UserReport() {
-    const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
     const [monthlyRecords, setMonthlyRecords] = useState<TimeRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const { addToast } = useToast();
 
-    const { allUsers: contextUsers } = useUsers();
-
-    useEffect(() => {
-        setAllUsers(contextUsers)
-    }, [contextUsers]);
-
+    const { allUsers } = useUsers();
     useEffect(() => {
         if (!selectedUserEmail) {
             setMonthlyRecords([]);

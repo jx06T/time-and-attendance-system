@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, use } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuthStatus } from '../../hooks/useAuthStatus';
@@ -113,7 +113,13 @@ function PermissionsManager() {
         const combined = allUsers.map(user => ({ ...user, role: adminRoles.get(user.uid!) || UserRole.User }));
         if (!searchTerm) return combined;
         const lowercasedTerm = searchTerm.toLowerCase();
-        return combined.filter(user => user.name.toLowerCase().includes(lowercasedTerm) || user.email.toLowerCase().includes(lowercasedTerm));
+        return combined.filter(user => (
+            user.name.toLowerCase().includes(lowercasedTerm)||
+            user.classId.toLowerCase().includes(lowercasedTerm)||
+            user.seatNo.toLowerCase().includes(lowercasedTerm)||
+            user.email.toLowerCase().includes(lowercasedTerm)||
+            `${user.classId}${user.seatNo}`.startsWith(lowercasedTerm))
+        );
     }, [allUsers, adminRoles, searchTerm]);
 
     const loading = usersLoading || rolesLoading;
@@ -123,7 +129,7 @@ function PermissionsManager() {
         <>
             <div className="bg-gray-800 p-6 rounded-lg">
                 <h3 className="text-xl font-bold mb-4">權限管理</h3>
-                <input type="text" placeholder="按姓名或 Email 搜尋使用者..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded mb-4" />
+                <input type="text" placeholder="按關鍵字搜尋使用者..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded mb-4" />
                 <div className="overflow-x-auto max-h-[60vh] bg-gray-900 rounded">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-700 sticky top-0"><tr><th className="p-3 px-4">姓名</th><th className="p-3 px-4">Email</th><th className="p-3 px-4">當前權限</th><th className="p-3 px-4">操作</th></tr></thead>

@@ -8,7 +8,10 @@ function CustomSelect({ value, onChange, options, placeholder = "請選擇..." }
     // 過濾選項
     const filteredOptions = options.filter(option =>
         option.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        option.email.toLowerCase().includes(searchTerm.toLowerCase())
+        option.email.toLowerCase().includes(searchTerm.toLowerCase())||
+        option.classId.toLowerCase().includes(searchTerm.toLowerCase())||
+        option.seatNo.toLowerCase().includes(searchTerm.toLowerCase())||
+        `${option.classId}${option.seatNo}`.startsWith(searchTerm.toLowerCase())
     );
 
     // 找到當前選中的選項
