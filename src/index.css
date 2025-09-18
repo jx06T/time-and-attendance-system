@@ -86,12 +86,13 @@ input[type="time"] {
 
 #reader {
   border: none !important;
+  @apply rounded-md;
 }
 
 #html5-qrcode-button-camera-permission,
 #html5-qrcode-button-camera-start,
 #html5-qrcode-button-camera-stop {
-  @apply border-2 border-accent-li text-accent-li py-2 px-4 rounded-md mt-2 z-50 absolute left-1/2 top-0 -translate-x-1/2 ;
+  @apply border-2 border-accent-li text-accent-li py-2 px-4 rounded-md mt-2 z-50 absolute left-1/2 top-0.5 -translate-x-1/2;
 }
 
 #html5-qrcode-anchor-scan-type-change {
@@ -106,10 +107,11 @@ input[type="time"] {
   @apply bg-gray-700;
 }
 
-#reader__scan_region {
-  /* max-height: 80% !important; */
+#reader__scan_region,
+#reader__scan_region video {
+  @apply rounded-sm;
 }
 
-#html5-qrcode-select-camera{
-  @apply decoration-accent-li underline underline-offset-2
+#html5-qrcode-select-camera {
+  @apply decoration-accent-li underline underline-offset-3;
 }
