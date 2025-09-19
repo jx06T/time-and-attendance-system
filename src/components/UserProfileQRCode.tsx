@@ -8,7 +8,7 @@ const UserProfileQRCode = ({ value }: UserProfileQRCodeProps) => {
     return (
         <div className="bg-neutral p-4 rounded-lg inline-block">
             <QRCodeSVG
-                value={"https://attendance.cksc.tw/admin/record/"+value}
+                value={"https://attendance.cksc.tw/r/"+value}
                 size={256}
                 level={"H"}
             />

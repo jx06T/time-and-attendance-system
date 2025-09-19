@@ -85,13 +85,13 @@ const AdminHomePage = () => {
       const url = new URL(scannedText);
 
       const parts = url.pathname.split("/");
-      if (parts[1] === "admin" && parts[2] === "record" && parts.length >= 4) {
+      if (parts[1] === "r"  && parts.length >= 3) {
         scannedEmail = parts[3];
       }
     } catch (e) {
     }
     if (!scannedEmail) {
-      addToast("URL 格式錯誤", "error");
+      addToast("URL 資料格式錯誤", "error");
       setTimeout(() => {
         processingRef.current = false
       }, 1000);

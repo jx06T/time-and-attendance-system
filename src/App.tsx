@@ -4,6 +4,7 @@ import ProfilePage from './pages/Profile';
 import AdminHomePage from './pages/AdminHome';
 import LoginPage from './pages/Login';
 import RecordPage from './pages/Record';
+import RPage from './pages/R';
 import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
 import NotFoundPage from './pages/NotFound';
@@ -17,6 +18,7 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/r/:userEmail" element={<RPage />} />
       </Route>
 
       <Route
