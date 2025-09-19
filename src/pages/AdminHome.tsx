@@ -247,11 +247,11 @@ const AdminHomePage = () => {
           placeholder="輸入姓名搜尋"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="w-full sm:w-auto flex-grow p-2 bg-gray-700 border border-gray-600 rounded text-white"
+          className=" flex-grow p-2 bg-gray-700 border border-gray-600 rounded text-white block"
         />
         <button
           onClick={() => setIsScannerOpen(true)}
-          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 px-3 rounded 
+          className=" block border-2 border-accent-li bg-gray-800 h-11 w-12 px-3 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
@@ -261,7 +261,7 @@ const AdminHomePage = () => {
         <button
           onClick={handleUpdateUsers}
           disabled={loading}
-          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 px-2 rounded 
+          className=" block border-2 border-accent-li bg-gray-800 h-11 w-12 px-2 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
