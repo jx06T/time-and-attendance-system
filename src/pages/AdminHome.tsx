@@ -86,7 +86,7 @@ const AdminHomePage = () => {
 
       const parts = url.pathname.split("/");
       if (parts[1] === "r"  && parts.length >= 3) {
-        scannedEmail = parts[3];
+        scannedEmail = parts[2];
       }
     } catch (e) {
     }
