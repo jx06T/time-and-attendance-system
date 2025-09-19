@@ -95,6 +95,22 @@ input[type="time"] {
   @apply border-2 border-accent-li text-accent-li py-2 px-4 rounded-md mt-2 z-50 absolute left-1/2 top-0.5 -translate-x-1/2 font-bold;
 }
 
+#reader__dashboard > div > div > :nth-child(2) {
+  border-width: 2px !important;
+  border-color: var(--color-accent-li) !important;
+  color: var(--color-accent-li) !important;
+  padding-top: 0.5rem !important;   /* py-2 */
+  padding-bottom: 0.5rem !important;
+  padding-left: 1rem !important;    /* px-4 */
+  padding-right: 1rem !important;
+  border-radius: 0.375rem !important; /* rounded-md */
+  margin-top: 0.5rem !important;     /* mt-2 */
+}
+
+#reader__dashboard > div > div > :nth-child(2) * {
+color:var(--color-neutral);
+}
+
 #html5-qrcode-anchor-scan-type-change {
   @apply text-sm text-gray-300 mt-1;
 }
@@ -112,6 +128,7 @@ input[type="time"] {
   @apply rounded-sm;
 }
 
+#html5-qrcode-button-file-selection,
 #html5-qrcode-select-camera {
   @apply decoration-accent-li underline underline-offset-3;
 }
