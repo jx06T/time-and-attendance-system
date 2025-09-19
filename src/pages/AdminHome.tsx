@@ -78,8 +78,25 @@ const AdminHomePage = () => {
     }
     processingRef.current = true;
     // setIsScannerOpen(false);
-    const match = scannedText.match(/\/record\/([^/]+)$/);
-    const scannedEmail = match ? match[1] : null;
+
+    let scannedEmail: string | null = null;
+
+    try {
+      const url = new URL(scannedText);
+
+      const parts = url.pathname.split("/");
+      if (parts[1] === "admin" && parts[2] === "record" && parts.length >= 4) {
+        scannedEmail = parts[3];
+      }
+    } catch (e) {
+    }
+    if (!scannedEmail) {
+      addToast("URL 格式錯誤", "error");
+      setTimeout(() => {
+        processingRef.current = false
+      }, 1000);
+      return
+    }
 
     const targetUser = allUsers.find(u => u.email === scannedEmail);
 
@@ -108,10 +125,23 @@ const AdminHomePage = () => {
         if (existingRecord.checkIn && !existingRecord.checkOut) {
           action = 'checkOut';
         } else {
-          addToast(`${targetUser.name} 今日已完成所有打卡`);
-          setTimeout(() => {
-            processingRef.current = false;
-          }, 1000);
+          createConfirmDialog({
+            title: `${targetUser.name} 已經簽退`,
+            message:
+              `班級座號：${targetUser.classId}  ${targetUser.seatNo}\n` +
+              `簽到時間：${formatTime(existingRecord?.checkIn)}\n` +
+              `簽退時間：${formatTime(existingRecord?.checkOut)}`,
+            confirmText: "確認",
+            cancelText:"查看詳情",
+            onConfirm: () => {
+              processingRef.current = false;
+            },
+            onCancel: () => {
+              processingRef.current = false;
+              navigate("/admin/record/"+scannedEmail)
+            }
+          });
+
           return;
         }
       }
