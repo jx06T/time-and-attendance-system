@@ -85,7 +85,7 @@ const LandingPage = () => {
                     <h1 className=' text-2xl font-bold mb-2'>
                         開源
                     </h1>
-                    <p>此系統採用 MIT 協議開源，詳細規範請見<a className=' decoration-accent-li underline underline-offset-2' href="https://github.com/jx06T/time-and-attendance-system"> Github 儲存庫</a></p>
+                    <p>此系統採用 MIT 協議開源，詳細規範請見 <a className=' decoration-accent-li underline underline-offset-2' href="https://github.com/jx06T/time-and-attendance-system">Github 儲存庫</a></p>
                 </div>
                 <div>
                     <h1 className=' text-2xl font-bold mb-3'>
