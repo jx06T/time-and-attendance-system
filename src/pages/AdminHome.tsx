@@ -247,7 +247,7 @@ const AdminHomePage = () => {
           placeholder="輸入姓名搜尋"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className=" flex-grow p-2 bg-gray-700 border border-gray-600 rounded text-white block"
+          className=" flex-grow min-w-0 p-2 bg-gray-700 border border-gray-600 rounded text-white block"
         />
         <button
           onClick={() => setIsScannerOpen(true)}
