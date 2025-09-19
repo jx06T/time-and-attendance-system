@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { TimeRecord, UserProfile } from '../types';
+import { TimeRecord } from '../types';
 
 import NumericKeypad from '../components/NumericKeypad';
 import QRCodeScannerModal from '../components/QRCodeScannerModal';
@@ -251,7 +251,7 @@ const AdminHomePage = () => {
         />
         <button
           onClick={() => setIsScannerOpen(true)}
-          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 rounded 
+          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 px-3 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
@@ -261,7 +261,7 @@ const AdminHomePage = () => {
         <button
           onClick={handleUpdateUsers}
           disabled={loading}
-          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 rounded 
+          className=" inline-block border-2 border-accent-li bg-gray-800 h-11 w-12 px-2 rounded 
                                    hover:bg-gray-700 text-neutral 
                                    transition-colors duration-200 
                                    disabled:opacity-50 disabled:cursor-not-allowed"
