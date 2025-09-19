@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useToast } from '../hooks/useToast';
 
 import { Menu } from '../assets/Icons'
+import {  CiLoading } from '../assets/Icons';
+
 
 function Header() {
     const { user, role, loading } =  useAuth();
@@ -34,7 +36,7 @@ function Header() {
             localStorage.removeItem('usersLastUpdated');
             navigate('/');
         } catch (error) {
-            addToast(`登入失敗：${error.message}`)
+            addToast(`登入失敗：${error}`)
             console.error("Logout failed", error);
         }
     };
@@ -79,7 +81,9 @@ function Header() {
                 <nav className=" hidden md:flex items-center gap-4 text-sm *:hover:text-accent-li">
                     {renderNavLinks()}
                 </nav>
-                {user ? (
+                {loading?
+                <div className="bg-gray-700 rounded-md animate-pulse h-8 w-20 text-center"><CiLoading className=' inline-block text-2xl'/></div>:
+                user ? (
                     <>
                         <div className=' hidden md:block bg-neutral w-[1px] -mx-3 h-6' >
                         </div>
