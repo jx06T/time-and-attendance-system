@@ -1,0 +1,25 @@
+{
+  "short_name": "打卡系統",
+  "name": "現代化場佈打卡系統",
+  "description": "一個簡單的打卡系統，支援 google 帳號綁定，指定日期/使用者產生報表，權限管理等功能",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/admin",
+  "display": "standalone",
+  "theme_color": "#02151c",
+  "background_color": "#02151c",
+  "scope": "/",
+  "orientation": "portrait"
+}
