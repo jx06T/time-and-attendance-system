@@ -42,6 +42,7 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
             } as UserProfile));
             setAllUsers(usersList);
             setLastUpdated(new Date().toISOString());
+            addToast("使用者列表更新成功")
         } catch (error) {
             console.error("Failed to fetch users:", error);
             addToast(`更新使用者列表失敗`, 'error');

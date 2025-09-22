@@ -28,7 +28,7 @@ const AdminHomePage = () => {
   const handleUpdateUsers = async () => {
     try {
       await fetchUsers();
-      addToast("使用者列表已更新！", "success");
+      // addToast("使用者列表已更新！", "success");
     } catch (error: any) {
       console.error("更新使用者列表失敗:", error);
       addToast(`更新使用者列表失敗: ${error.message}`, "error");
@@ -41,11 +41,15 @@ const AdminHomePage = () => {
       const cleanedInput = input.trim().toLowerCase();
       if (cleanedInput) {
         filtered = allUsers.filter(user =>
-          `${user.classId}${user.seatNo}`.startsWith(cleanedInput) ||
-          user.name.toLowerCase().includes(cleanedInput)
+          user.classId.toLowerCase().includes(cleanedInput) ||
+          user.name.toLowerCase().includes(cleanedInput) ||
+          user.email.toLowerCase().includes(cleanedInput) ||
+          user.seatNo.toLowerCase().includes(cleanedInput) ||
+          `${user.classId}${user.seatNo}`.startsWith(cleanedInput)
         );
       }
     }
+
     filtered.sort((a, b) => {
       const aIsPending = pendingEmails.has(a.email);
       const bIsPending = pendingEmails.has(b.email);
@@ -67,6 +71,9 @@ const AdminHomePage = () => {
       addToast("有多位使用者符合條件", "error");
     }
   };
+
+
+  // ================================================================
 
   const handleScanSuccess = useCallback(async (scannedText: string) => {
     if (processingRef.current) return;
@@ -116,12 +123,12 @@ const AdminHomePage = () => {
             title: `${targetUser.name} 今日已簽退`,
             message: `班級座號：${targetUser.classId}  ${targetUser.seatNo}\n簽到時間：${formatTime(existingRecord?.checkIn)}\n簽退時間：${formatTime(existingRecord?.checkOut)}`,
             confirmText: "關閉",
-            cancelText: "查看與編輯",
+            cancelText: "查看詳細資料",
             onConfirm: () => {
               processingRef.current = false;
             },
             onCancel: () => {
-              navigate("/operator/record/" + scannedEmail);
+              navigate("/admin/record/" + scannedEmail);
               setIsScannerOpen(false);
               processingRef.current = false;
             }
@@ -172,12 +179,21 @@ const AdminHomePage = () => {
     }
   }, [addToast]);
 
+  // ================================================================
+
+  useEffect(() => {
+    document.title = '場佈打卡系統 | 打卡頁面';
+    return () => {
+      document.title = '場佈打卡系統';
+    };
+  }, []);
+
   const loading = usersLoading || pendingLoading;
 
   return (
     <div className="flex flex-col items-center w-full pt-8 px-3">
       <div className='w-full max-w-md mb-10'>
-        <div className="w-full p-3.5 bg-gray-700 rounded-md mb-4 text-center h-14 text-xl font-mono">
+        <div className="w-full p-3.5 bg-gray-700 rounded-md mb-4 text-center h-14 text-xl">
           {input || '使用數字鍵盤或掃描 QR code'}
         </div>
         <NumericKeypad
