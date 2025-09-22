@@ -132,3 +132,11 @@ color:var(--color-neutral);
 #html5-qrcode-select-camera {
   @apply decoration-accent-li underline underline-offset-3;
 }
+
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}

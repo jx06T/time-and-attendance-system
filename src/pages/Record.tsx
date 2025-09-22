@@ -166,6 +166,8 @@ const AdminRecordPage = () => {
                     userEmail,
                     date: dateStr,
                     checkInRecorderUid: user?.uid,
+                    checkOut: null,
+                    checkOutRecorderUid: null
                 }, { merge: true });
                 addToast("簽到成功！", "success");
             } else {
