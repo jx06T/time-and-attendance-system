@@ -35,7 +35,7 @@ function BasicSelect({ options, value, onChange, disabled }: CustomSelectProps) 
     };
 
     return (
-        <div className="relative w-36" ref={wrapperRef}>
+        <div className="relative w-full" ref={wrapperRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}

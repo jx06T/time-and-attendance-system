@@ -16,6 +16,9 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
+// 引入 BasicSelect 組件及其 SelectOption 類型
+import BasicSelect, { SelectOption } from '../ui/BasicSelect'; // 確保路徑正確
+
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -45,6 +48,16 @@ function RankingsReport() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>('');
+
+    // 定義年級篩選選項
+    const gradeLevelOptions: SelectOption[] = useMemo(() => [
+        { value: '', label: '全部人' },
+        { value: '1', label: '學弟' },
+        { value: '2', label: '同屆' },
+    ], []);
+
+
     useEffect(() => {
         const fetchRankings = async () => {
             setLoading(true);
@@ -63,14 +76,20 @@ function RankingsReport() {
             const weekRecords = recordsSnapshot.docs.map(doc => doc.data() as TimeRecord);
 
             const usersMap = new Map<string, UserProfile>();
-            allUsers.forEach(user => {
+            // 根據 selectedGradeLevel 篩選用戶
+            const filteredUsers = selectedGradeLevel
+                ? allUsers.filter(user => user.classId && user.classId.startsWith(selectedGradeLevel))
+                : allUsers;
+
+            filteredUsers.forEach(user => {
                 usersMap.set(user.email, user);
             });
 
             const userHours = new Map<string, number>();
             weekRecords.forEach(record => {
                 const email = record.userEmail;
-                if (record.checkIn && record.checkOut && email) {
+                // 只有在 filteredUsersMap 中存在的用戶才計算時數
+                if (record.checkIn && record.checkOut && email && usersMap.has(email)) {
                     const deductionMillis = (record.deductionMinutes || 0) * 60 * 1000;
                     const durationMillis = record.checkOut.toMillis() - record.checkIn.toMillis() - deductionMillis;
                     const hours = Math.max(0, durationMillis / (1000 * 60 * 60));
@@ -94,25 +113,27 @@ function RankingsReport() {
         };
 
         fetchRankings();
-    }, [weekStart]);
-
+    }, [weekStart, selectedGradeLevel, allUsers]); 
 
     const handlePublishRankings = async () => {
-        if (rankings.length === 0) {
+        const rankingsToPublish = rankings;
+
+        if (rankingsToPublish.length === 0) {
             addToast("無資料可發布", 'error');
             return;
         }
         setIsPublishing(true);
         try {
-            const championHours = rankings[0].totalHours * 1.2;
+            const championHours = rankingsToPublish[0].totalHours * 1.2;
             if (championHours <= 0) {
                 addToast("最高時數為0，無法更新", "error");
                 setIsPublishing(false);
                 return;
             }
 
-            const topFive = rankings.slice(0, 5).map(user => ({
+            const topFive = rankingsToPublish.slice(0, 5).map(user => ({
                 name: user.name,
+                classId: user.classId,
                 percentage: (user.totalHours / championHours) * 100,
             }));
 
@@ -121,6 +142,7 @@ function RankingsReport() {
                 topFive: topFive,
                 updatedAt: Timestamp.now(),
                 weekStartDate: Timestamp.fromDate(weekStart),
+                filteredGradeLevel: selectedGradeLevel || null,
             });
 
             addToast("已成功發布!", "success");
@@ -150,8 +172,7 @@ function RankingsReport() {
             user.email.toLowerCase().includes(lowercasedTerm) ||
             `${user.classId}${user.seatNo}`.startsWith(lowercasedTerm))
         );
-    }, [allUsers, rankings, searchTerm]);
-
+    }, [rankings, searchTerm]);
 
     const chartOptions = {
         responsive: true,
@@ -167,7 +188,7 @@ function RankingsReport() {
             },
             title: {
                 display: true,
-                text: `當週排名 (${weekStart.toLocaleDateString()})`,
+                text: `當週排名 (${weekStart.toLocaleDateString()}${selectedGradeLevel ? ` - ${selectedGradeLevel}` : ''})`,
                 color: '#FFFFFF',
                 font: {
                     size: 18,
@@ -192,11 +213,11 @@ function RankingsReport() {
     };
 
     const chartData = {
-        labels: rankings.slice(0, 10).map(r => r.name),
+        labels: displayRankings.slice(0, 10).map(r => r.name),
         datasets: [
             {
                 label: '總工時',
-                data: rankings.slice(0, 10).map(r => r.totalHours),
+                data: displayRankings.slice(0, 10).map(r => r.totalHours),
                 backgroundColor: 'rgb(64, 47, 113,0.7)',
                 borderColor: 'rgb(212, 145, 255)',
                 borderWidth: 1,
@@ -214,17 +235,30 @@ function RankingsReport() {
 
             {loading ? <p className="text-center">正在載入當週排名...</p> : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-28">
-                    <div className="lg:col-span-2 bg-gray-800 p-4 rounded-lg">
+                    <div className="lg:col-span-2 bg-gray-800 p-4 rounded-lg h-fit">
                         <Bar options={chartOptions} data={chartData} />
                     </div>
 
                     <div className="bg-gray-800 p-4 rounded-lg">
                         <h3 className="text-xl font-bold mb-4">詳細報表</h3>
-                        <input type="text" placeholder="按關鍵字搜尋使用者..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded mb-4" />
+                        <div className="mb-4 flex flex-col gap-2">
+                            <input
+                                type="text"
+                                placeholder="按關鍵字搜尋使用者..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="flex-grow p-2 bg-gray-700 border border-gray-600 rounded"
+                            />
+                            <BasicSelect
+                                options={gradeLevelOptions}
+                                value={selectedGradeLevel}
+                                onChange={setSelectedGradeLevel}
+                            />
+                        </div>
                         <ul className="space-y-3">
                             {displayRankings.map((user, index) => (
                                 <li key={user.id || user.email} className={`p-2 rounded border border-accent-li bg-opacity-30 `}>
-                                    <span className=" text-neutral mr-2">{index + 1}. {user.name}</span>
+                                    <span className=" text-neutral mr-2">{index + 1}. {user.name} ({user.classId || 'N/A'})</span>
                                     <span className="text-gray-300">－ {user.totalHours.toFixed(2)} 小時</span>
                                 </li>
                             ))}

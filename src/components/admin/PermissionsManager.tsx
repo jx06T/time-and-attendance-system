@@ -158,7 +158,7 @@ function PermissionsManager() {
                                         <td className="p-3 px-4 h-14">{user.name}</td>
                                         <td className="p-3 px-4">{user.email}</td>
                                         <td className="p-3 px-4"><span className={`px-2 py-1 text-xs rounded font-semibold ${user.role === UserRole.SuperAdmin ? 'bg-red-700 text-red-50' : user.role === UserRole.Admin ? 'bg-accent-li/90 text-neutral' : user.role === UserRole.Clocker ? 'bg-accent-li/40 text-neutral' : 'bg-gray-600 text-gray-200'}`}>{user.role}</span></td>
-                                        <td className="p-3 px-4">
+                                        <td className="p-3 px-4 w-36">
                                             {processingId === user.id ? (<span>處理中...</span>) : (
                                                 <BasicSelect
                                                     value={user.role}
