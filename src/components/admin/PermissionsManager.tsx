@@ -8,7 +8,7 @@ import BasicSelect, { SelectOption } from '../ui/BasicSelect';
 import { useToast } from '../../hooks/useToast';
 import { createConfirmDialog } from '../../utils/createConfirmDialog';
 
-type UserWithRole = UserProfile & { role: UserRole };
+type UserWithRole = UserProfile & { role: (UserRole | "invited") };
 
 const DELETE_ACTION_VALUE = 'delete_user_action';
 
@@ -110,8 +110,8 @@ function PermissionsManager() {
     };
 
     const displayUsers = useMemo((): UserWithRole[] => {
-        console.log(adminRoles, allUsers)
-        const combined = allUsers.map(user => ({ ...user, role: adminRoles.get(user.uid!) || UserRole.User }));
+        // console.log(adminRoles, allUsers)
+        const combined = allUsers.map(user => ({ ...user, role: (adminRoles.get(user.uid!) as UserRole) || (user.uid ? UserRole.User : "invited") }));
         if (!searchTerm) return combined;
         const lowercasedTerm = searchTerm.toLowerCase();
         return combined.filter(user => (
@@ -175,6 +175,7 @@ function PermissionsManager() {
                         </tbody>
                     </table>
                 </div>
+                <p className=' mt-1'>共 {displayUsers.length} 人</p>
             </div>
             <div className=' w-full h-32'></div>
         </>
