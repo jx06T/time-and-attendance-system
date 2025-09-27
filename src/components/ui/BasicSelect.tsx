@@ -35,12 +35,12 @@ function BasicSelect({ options, value, onChange, disabled }: CustomSelectProps) 
     };
 
     return (
-        <div className="relative w-full" ref={wrapperRef}>
+        <div className="relative w-full h-10" ref={wrapperRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 disabled={disabled}
-                className="w-full flex items-center justify-between bg-gray-700 border border-gray-600 rounded p-1.5 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-full flex items-center justify-between bg-gray-700 border border-gray-600 rounded p-1.5 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <span>{selectedOption?.label || '請選擇...'}</span>
                 <svg className={`w-4 h-4 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { UsersProvider } from './context/UsersContext.tsx';
 import { ToastProvider } from './hooks/useToast.tsx'
 import { AuthProvider } from './context/AuthContext';
+import UpdateNotifier from './components/UpdateNotifier'; 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <AuthProvider>
           <UsersProvider>
+            <UpdateNotifier />
             <App />
           </UsersProvider>
         </AuthProvider>

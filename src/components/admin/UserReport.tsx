@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
@@ -38,6 +39,28 @@ function UserReport() {
     const { addToast } = useToast();
 
     const { allUsers } = useUsers();
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+
+
+    useEffect(() => {
+        if (selectedUserEmail === "") return;
+
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("e", selectedUserEmail);
+
+        const newUrl = `${location.pathname}?${newParams.toString()}${location.hash}`;
+
+        window.history.replaceState({}, "", newUrl);
+    }, [selectedUserEmail, searchParams, location]);
+
+    useEffect(() => {
+        const emailParam = searchParams.get('e');
+        setSelectedUserEmail(emailParam || "");
+    }, [searchParams]);
+
     useEffect(() => {
         if (!selectedUserEmail) {
             setMonthlyRecords([]);
@@ -60,7 +83,7 @@ function UserReport() {
                     where('userEmail', '==', selectedUserEmail),
                     where('date', '>=', startDateString),
                     where('date', '<', endDateString),
-                    orderBy('date', 'asc')
+                    orderBy('date', 'desc')
                 );
 
                 const recordsSnapshot = await getDocs(q);
@@ -159,6 +182,10 @@ function UserReport() {
         }],
     };
 
+    const handleGoToUserRecord = (email: string, date: string) => {
+        navigate(`/admin/record/${email}?date=${date}`);
+    };
+
     return (
         <>
             <div className="bg-gray-800 p-6 rounded-lg">
@@ -205,7 +232,7 @@ function UserReport() {
                                                 hours = Math.max(0, (record.checkOut.toMillis() - record.checkIn.toMillis() - deductionMillis) / (1000 * 60 * 60));
                                             }
                                             return (
-                                                <tr key={record.id} className=" not-last:border-b border-accent">
+                                                <tr key={record.id} className=" not-last:border-b border-accent" onDoubleClick={() => handleGoToUserRecord(selectedUserEmail, record.date)}>
                                                     <td className="p-3 px-4">{record.date}</td>
                                                     <td className="p-3 px-4">{formatTime(record.checkIn)}</td>
                                                     <td className="p-3 px-4">{formatTime(record.checkOut)}</td>

@@ -106,6 +106,14 @@ function ProfilePage() {
             )}
           </div>
         </div>
+        {user?.email &&
+          <div>
+            <h2 className='text-xl font-bold text-neutral mb-4 text-left'>QR Code</h2>
+            <div className=' flex flex-col items-center'>
+              <UserProfileQRCode value={user.email} />
+            </div>
+          </div>
+        }
 
         <div >
           <h2 className="text-xl font-bold text-neutral mb-4 text-left">打卡紀錄</h2>
@@ -144,14 +152,7 @@ function ProfilePage() {
             </div>
           )}
         </div>
-        {user?.email &&
-          <div>
-            <h2 className='text-xl font-bold text-neutral mb-4 text-left'>QR Code</h2>
-            <div className=' flex flex-col items-center'>
-              <UserProfileQRCode value={user.email} />
-            </div>
-          </div>
-        }
+
       </div>
       <div className="w-full h-32"></div>
     </div>
