@@ -148,7 +148,7 @@ const AdminHomePage = () => {
           const nowTimestamp = Timestamp.now();
           try {
             if (action === 'checkIn') {
-              await setDoc(recordDocRef, { checkIn: nowTimestamp, userEmail: targetUser.email, date: dateStr, checkInRecorderUid: adminUser.uid }, { merge: true });
+              await setDoc(recordDocRef, { checkIn: nowTimestamp, checkInRecorderUid: adminUser.uid ,checkOut: null, checkOutRecorderUid: null, userEmail: targetUser.email, date: dateStr}, { merge: true });
               addToast(`${targetUser.name} 簽到成功！`, "success");
             } else {
               await setDoc(recordDocRef, { checkOut: nowTimestamp, checkOutRecorderUid: adminUser.uid }, { merge: true });
