@@ -43,9 +43,10 @@ function AdminPage() {
     }, [currentTabKey, availableTabs]);
 
     const handleTabClick = (tabKey: AdminTabKey) => {
+        const search = window.location.search;
         navigate({
             pathname: location.pathname,
-            search: location.search,
+            search: search,
             hash: `#${tabKey}`,
         });
     };

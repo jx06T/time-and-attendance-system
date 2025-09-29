@@ -8,6 +8,7 @@ import RPage from './pages/R';
 import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
 import NotFoundPage from './pages/NotFound';
+import BatchRecordPage from './pages/BatchRecord';
 
 import { UserRole } from './types';
 import { AuthorizationGuard } from './components/AuthorizationGuard';
@@ -39,6 +40,7 @@ function App() {
         }
       >
         <Route path="/admin" element={<AdminHomePage />} />
+        <Route path="/admin/batch-record" element={<BatchRecordPage />} />
         <Route path="/admin/record/:userEmail" element={<RecordPage />} />
       </Route>
 

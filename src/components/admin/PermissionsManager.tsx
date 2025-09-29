@@ -134,7 +134,7 @@ function PermissionsManager() {
                 <input type="text" placeholder="按關鍵字搜尋使用者..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded mb-4" />
                 <div className="overflow-x-auto max-h-[60vh] bg-gray-900 rounded">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-700 sticky top-0"><tr><th className="p-3 px-4">姓名</th><th className="p-3 px-4">Email</th><th className="p-3 px-4">當前權限</th><th className="p-3 px-4">操作</th></tr></thead>
+                        <thead className="bg-gray-700 sticky top-0 z-10"><tr><th className="p-3 px-4">姓名</th><th className="p-3 px-4">Email</th><th className="p-3 px-4">當前權限</th><th className="p-3 px-4">操作</th></tr></thead>
                         <tbody>
                             {displayUsers.map(user => {
                                 const baseOptions: SelectOption[] = [

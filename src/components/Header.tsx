@@ -57,6 +57,7 @@ function Header() {
             return (
                 <>
                     <Link to="/admin">打卡</Link>
+                    <Link to="/admin/batch-record">大量打卡</Link>
                     <Link to="/admin/dashboard">管理面板</Link>
                     <a className='' href="https://github.com/jx06T/time-and-attendance-system">Github</a>
                 </>

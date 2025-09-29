@@ -5,10 +5,12 @@ import { UserProfile, UserRole, TimeRecord } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { toLocalDateString } from '../utils/tools';
 
 interface UsersContextType {
     allUsers: UserProfile[];
     pendingEmails: Set<string>;
+    checkedOutTodayEmails: Set<string>; 
     loading: boolean;
     pendingLoading: boolean;
     lastUpdated: string | null;
@@ -26,6 +28,7 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(false);
 
     const [pendingEmails, setPendingEmails] = useState<Set<string>>(new Set());
+    const [checkedOutTodayEmails, setCheckedOutTodayEmails] = useState<Set<string>>(new Set());
     const [pendingLoading, setPendingLoading] = useState(true);
     const isInitialMount = useRef(true);
 
@@ -65,52 +68,55 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
             setPendingLoading(false);
             return;
         }
-        const q = query(collection(db, 'timeRecords'), where('checkOut', '==', null));
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const currentEmails = new Set<string>();
-            // const userMap = new Map<string, UserProfile>();
-            // allUsers.forEach(u => userMap.set(u.email, u));
-
-            // snapshot.docChanges().forEach((change) => {
-            //     const data = change.doc.data() as TimeRecord;
-            //     const user = userMap.get(data.userEmail);
-
-            //     if (!isInitialMount.current && user) {
-            //         if (change.type === 'added' && data.checkIn && !data.checkOut) {
-            //             addToast(`${user.name} 簽到`);
-            //         }
-            //         if (change.type === 'modified' && data.checkOut) {
-            //             addToast(`${user.name} 簽退`);
-            //         }
-            //     }
-            // });
-
+        // --- 監聽器 1: 監聽未簽退的人 (checkOut == null) ---
+        const pendingQuery = query(collection(db, 'timeRecords'), where('checkOut', '==', null));
+        const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
+            const currentPendingEmails = new Set<string>();
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
                 if (data.checkIn) {
-                    currentEmails.add(data.userEmail);
+                    currentPendingEmails.add(data.userEmail);
                 }
             });
-
-            setPendingEmails(currentEmails);
+            setPendingEmails(currentPendingEmails);
             if (pendingLoading) setPendingLoading(false);
-            if (isInitialMount.current) isInitialMount.current = false;
-
         }, (error) => {
             console.error("監聽未簽退記錄失敗:", error);
-            addToast("監聽異常記錄失敗", "error");
+            addToast("監聽未簽退記錄失敗", "error");
             if (pendingLoading) setPendingLoading(false);
         });
 
-        return () => unsubscribe();
-    }, [role, addToast, allUsers, pendingLoading]);
+        // --- 監聽器 2: 監聽今天已簽退的人 (date == today, checkOut != null) ---
+        const todayStr = toLocalDateString(new Date());
+        const completedQuery = query(
+            collection(db, 'timeRecords'),
+            where('date', '==', todayStr),
+            where('checkOut', '!=', null)
+        );
+        const unsubscribeCompleted = onSnapshot(completedQuery, (snapshot) => {
+            const currentCompletedEmails = new Set<string>();
+            snapshot.docs.forEach(doc => {
+                currentCompletedEmails.add(doc.data().userEmail);
+            });
+            setCheckedOutTodayEmails(currentCompletedEmails);
+        }, (error) => {
+            console.error("監聽今日已簽退記錄失敗:", error);
+            addToast("監聽今日已簽退記錄失敗", "error");
+        });
+
+        // 返回一個 cleanup 函數來取消兩個訂閱
+        return () => {
+            unsubscribePending();
+            unsubscribeCompleted();
+        };
+    }, [role, addToast, pendingLoading]);
 
     const getUserByEmail = useCallback((email: string): UserProfile | undefined => {
         return allUsers.find(user => user.email.toLowerCase() === email.toLowerCase());
     }, [allUsers]);
 
-    const value = { allUsers, pendingEmails, loading, pendingLoading, lastUpdated, fetchUsers, getUserByEmail };
+    const value = { allUsers, pendingEmails, checkedOutTodayEmails, loading, pendingLoading, lastUpdated, fetchUsers, getUserByEmail };
 
     return (
         <UsersContext.Provider value={value}>

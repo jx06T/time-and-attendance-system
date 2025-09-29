@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
 import { useUsers } from '../../context/UsersContext';
@@ -40,7 +40,7 @@ function UserReport() {
 
     const { allUsers } = useUsers();
 
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams, _] = useSearchParams();
     const location = useLocation();
     const navigate = useNavigate();
 
