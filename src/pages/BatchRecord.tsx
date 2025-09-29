@@ -13,12 +13,14 @@ import { CiLoading, IcRoundSync } from '../assets/Icons';
 import useLocalStorage from '../hooks/useLocalStorage'; // 引入您的 useLocalStorage hook
 
 // 定義緩存操作的類型
-interface CachedAction {
-    action: 'checkIn' | 'checkOut';
-    timestamp: number; // 存儲為數字以便 JSON 序列化
+interface CachedActionDetail {
+    timestamp: number;
     userName: string;
 }
-
+interface CachedAction {
+    checkIn?: CachedActionDetail;
+    checkOut?: CachedActionDetail;
+}
 type CachedActions = Record<string, CachedAction>; // Key 是 user.email
 
 function BatchRecordPage() {
@@ -29,7 +31,6 @@ function BatchRecordPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // 1. 使用 useLocalStorage hook 來管理待處理的操作
     const [cachedActions, setCachedActions] = useLocalStorage<CachedActions>('batch-record-actions', {});
     const cachedActionCount = Object.keys(cachedActions).length;
 
@@ -53,24 +54,37 @@ function BatchRecordPage() {
         });
     }, [searchTerm, allUsers]);
 
-    // 2. 修改 handleCheckInOut，使其只更新本地緩存
-    const handleLocalCheckInOut = useCallback((user: UserProfile, action: 'checkIn' | 'checkOut') => {
-        setCachedActions(prev => ({
-            ...prev,
-            [user.email]: {
-                action,
-                timestamp: Date.now(),
-                userName: user.name,
+    const handleLocalCheckInOut = useCallback((user: UserProfile, actionType: 'checkIn' | 'checkOut') => {
+        setCachedActions(prev => {
+            const newActions = { ...prev };
+            const existingUserActions = { ...(newActions[user.email] || {}) };
+
+            // 檢查是否是取消操作
+            if (existingUserActions[actionType]) {
+                if (actionType === "checkIn") {
+                    delete existingUserActions["checkOut"];
+                }
+                delete existingUserActions[actionType];
+            } else {
+                // 否則，是新增操作
+                existingUserActions[actionType] = {
+                    timestamp: Date.now(),
+                    userName: user.name,
+                };
             }
-        }));
+
+            if (Object.keys(existingUserActions).length === 0) {
+                delete newActions[user.email];
+            } else {
+                newActions[user.email] = existingUserActions;
+            }
+
+            return newActions;
+        });
     }, [setCachedActions]);
 
-    // 3. 創建一個新的異步函數來處理與 Firebase 的同步
     const handleSync = async () => {
-        if (cachedActionCount === 0 || isSyncing || !adminUser) {
-            return;
-        }
-
+        if (cachedActionCount === 0 || isSyncing || !adminUser) return;
         setIsSyncing(true);
         const batch = writeBatch(db);
         const dateStr = toLocalDateString(new Date());
@@ -79,30 +93,35 @@ function BatchRecordPage() {
             for (const email in cachedActions) {
                 const actionData = cachedActions[email];
                 const recordDocRef = doc(db, 'timeRecords', `${email}_${dateStr}`);
-                const timestamp = Timestamp.fromMillis(actionData.timestamp);
 
-                if (actionData.action === 'checkIn') {
-                    batch.set(recordDocRef, {
-                        userEmail: email,
-                        date: dateStr,
-                        checkIn: timestamp,
-                        checkInRecorderUid: adminUser.uid,
-                        checkOut: null,
-                        checkOutRecorderUid: null,
-                    }, { merge: true });
-                } else {
-                    batch.update(recordDocRef, {
-                        checkOut: timestamp,
-                        checkOutRecorderUid: adminUser.uid,
-                    });
+                const dataToSync: any = {};
+
+                if (actionData.checkIn) {
+                    dataToSync.userEmail = email;
+                    dataToSync.date = dateStr;
+                    dataToSync.checkIn = Timestamp.fromMillis(actionData.checkIn.timestamp);
+                    dataToSync.checkInRecorderUid = adminUser.uid;
+                    // 確保 checkOut 為 null，以防這是一個全新的記錄
+                    if (!actionData.checkOut) {
+                        dataToSync.checkOut = null;
+                        dataToSync.checkOutRecorderUid = null;
+                    }
+                }
+
+                if (actionData.checkOut) {
+                    dataToSync.checkOut = Timestamp.fromMillis(actionData.checkOut.timestamp);
+                    dataToSync.checkOutRecorderUid = adminUser.uid;
+                }
+
+                // 使用 set with merge，可以安全地創建新紀錄或更新現有紀錄
+                if (Object.keys(dataToSync).length > 0) {
+                    batch.set(recordDocRef, dataToSync, { merge: true });
                 }
             }
 
             await batch.commit();
-            addToast(`成功同步 ${cachedActionCount} 筆記錄！`, "success", 5000);
-            setCachedActions({}); // 清空本地緩存
-            // await fetchUsers(); // 從伺服器獲取最新狀態
-
+            addToast(`成功同步 ${cachedActionCount} 筆用戶記錄！`, "success", 5000);
+            setCachedActions({});
         } catch (error: any) {
             console.error("同步失敗：", error);
             addToast(`同步失敗： ${error.message}`, 'error', 10000);
@@ -125,9 +144,33 @@ function BatchRecordPage() {
     };
 
     return (
-        <div className="relative">
-            <div className="bg-gray-800 p-6 rounded-lg">
-                <h3 className="text-xl font-bold mb-4">批量打卡</h3>
+        <div className="">
+            <div className="bg-gray-800 p-6 pb-8 rounded-lg ">
+                <div className=' grid grid-cols-[0.6fr_1fr]  mb-4 h-18'>
+                    <h3 className="text-xl font-bold">批量打卡</h3>
+                    {cachedActionCount > 0 && (
+                        <div className=" text-right">
+                            <button
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                className="px-4 pt-2 py-1 border-2 bg-gray-800 border-accent-li  text-accent-li font-bold rounded disabled:cursor-wait cursor-pointer"
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <CiLoading className="animate-spin text-2xl inline-block" />
+                                        <span>同步中...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IcRoundSync className="text-2xl inline-block mb-1 mr-0.5" />
+                                        <span>同步 {cachedActionCount} 筆變更</span>
+                                    </>
+                                )}
+                            </button>
+                            <span className=' block mt-1 text-right w-full cursor-pointer text-gray-400 underline underline-offset-2' onClick={handleClearCache}>清除緩存</span>
+                        </div>
+                    )}
+                </div>
                 <div className="mb-4">
                     <input
                         type="text"
@@ -154,52 +197,46 @@ function BatchRecordPage() {
                                 {filteredAndSortedUsers.length > 0 ? (
                                     filteredAndSortedUsers.map(user => {
                                         const cachedAction = cachedActions[user.email];
-                                        const isPendingOnServer = pendingEmails.has(user.email);
-                                        const hasCheckedOutToday = checkedOutTodayEmails.has(user.email); // <-- 使用新數據
 
-                                        let checkInDisabled = false;
-                                        let checkOutDisabled = false;
+                                        // 結合伺服器和本地緩存的狀態來決定最終狀態
+                                        const hasServerCheckIn = pendingEmails.has(user.email) || checkedOutTodayEmails.has(user.email);
+                                        const hasServerCheckOut = checkedOutTodayEmails.has(user.email);
 
-                                        if (cachedAction) {
-                                            // 本地有緩存，優先以緩存狀態為準
-                                            if (cachedAction.action === 'checkIn') {
-                                                checkInDisabled = true;
-                                                checkOutDisabled = false;
-                                            } else { // cachedAction.action === 'checkOut'
-                                                checkInDisabled = true;
-                                                checkOutDisabled = true;
-                                            }
-                                        } else {
-                                            // 沒有本地緩存，依賴伺服器狀態
-                                            if (hasCheckedOutToday) {
-                                                checkInDisabled = true;
-                                                checkOutDisabled = true;
-                                            } else if (isPendingOnServer) {
-                                                checkInDisabled = true;
-                                                checkOutDisabled = false;
-                                            } else {
-                                                checkInDisabled = false;
-                                                checkOutDisabled = true;
-                                            }
-                                        }
+                                        const effectiveCheckIn = cachedAction?.checkIn || hasServerCheckIn;
+                                        const effectiveCheckOut = cachedAction?.checkOut || hasServerCheckOut;
+
+                                        // 如果本地取消了簽到，但還留著簽退，這是不合邏輯的，簽退也應被視為無效
+                                        const logicalCheckOut = effectiveCheckIn && effectiveCheckOut;
+
+                                        const checkInDisabled = !!effectiveCheckIn;
+                                        const checkOutDisabled = !effectiveCheckIn || !!logicalCheckOut;
+
+                                        // 判斷是否高亮：如果本地緩存的簽到/簽退狀態與按鈕的禁用狀態不符，則表示有待辦事項
+                                        const isCheckInPending = cachedAction?.checkIn && !hasServerCheckIn;
+                                        const isCheckOutPending = cachedAction?.checkOut && !hasServerCheckOut;
+                                        // 或者，取消了一個已存在伺服器的操作
+                                        const isCheckInCancelled = cachedAction && !cachedAction.checkIn && hasServerCheckIn && !hasServerCheckOut;
+                                        const isCheckOutCancelled = cachedAction && !cachedAction.checkOut && hasServerCheckOut;
+
+                                        const hasPendingChange = isCheckInPending || isCheckOutPending || isCheckInCancelled || isCheckOutCancelled;
 
                                         return (
-                                            <tr key={user.id} className={`not-last:border-b border-gray-700 ${cachedAction ? 'bg-accent/10' : ''}`}>
+                                            <tr key={user.id} className={`not-last:border-b border-gray-700 ${hasPendingChange ? 'bg-accent/30' : ''}`}>
                                                 <td className="p-3 px-4 font-mono">{user.classId} {user.seatNo}</td>
                                                 <td className="p-3 px-4 font-bold text-base">{user.name}</td>
                                                 <td className="p-3 px-4">
                                                     <div className="flex justify-center items-center gap-2">
                                                         <button
                                                             onClick={() => handleLocalCheckInOut(user, 'checkIn')}
-                                                            disabled={checkInDisabled}
-                                                            className="-z-0 px-3 py-1 border-2 border-accent-li rounded text-accent-li disabled:border-gray-600 disabled:text-gray-400 disabled:opacity-50 transition-colors"
+                                                            // disabled={!checkOutDisabled}
+                                                            className={`px-3 py-1 border-2 rounded transition-colors ${checkInDisabled ? "border-gray-600 text-gray-400 opacity-50 cursor-not-allowed" : "border-accent-li text-accent-li"}`}
                                                         >
                                                             簽到
                                                         </button>
                                                         <button
                                                             onClick={() => handleLocalCheckInOut(user, 'checkOut')}
-                                                            disabled={checkOutDisabled}
-                                                            className="-z-0 px-3 py-1 border-2 border-accent-li rounded text-accent-li disabled:border-gray-600 disabled:text-gray-400 disabled:opacity-50 transition-colors"
+                                                            disabled={!checkInDisabled}
+                                                            className={`px-3 py-1 border-2 rounded transition-colors ${checkOutDisabled ? "border-gray-600 text-gray-400 opacity-50 cursor-not-allowed" : "border-accent-li text-accent-li"}`}
                                                         >
                                                             簽退
                                                         </button>
@@ -221,29 +258,8 @@ function BatchRecordPage() {
                 )}
             </div>
 
-            {cachedActionCount > 0 && (
-                <div className="fixed bottom-4 right-8 z-50">
-                    <button
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                        className="flex items-center gap-1 px-4 py-2 border-2 bg-gray-800 border-accent-li  text-accent-li font-bold rounded disabled:cursor-wait cursor-pointer"
-                    >
-                        {isSyncing ? (
-                            <>
-                                <CiLoading className="animate-spin text-2xl" />
-                                <span>同步中...</span>
-                            </>
-                        ) : (
-                            <>
-                                <IcRoundSync className="text-2xl" />
-                                <span>同步 {cachedActionCount} 筆變更</span>
-                            </>
-                        )}
-                    </button>
-                    <span className=' block mt-1 text-right w-full cursor-pointer text-gray-400 underline underline-offset-2' onClick={handleClearCache}>清除緩存</span>
-                </div>
-            )}
-            <div className='w-full h-32 bg-transparent'></div>
+
+            <div className='w-full h-4 bg-transparent'></div>
         </div>
     );
 }
