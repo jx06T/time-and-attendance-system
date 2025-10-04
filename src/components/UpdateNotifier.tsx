@@ -6,6 +6,7 @@ import useLocalStorage from '../hooks/useLocalStorage'; // 確保路徑正確
 
 export const versionLog = {
     '1.3.1': '儀表板功能更新了!現在可以篩選指定時數以下(上)的紀錄，並可以直接點擊前往該使用者的詳細記錄',
+    '1.3.2': '新增批次打卡功能，提供完整使用者列表可連續點擊簽到(退)並批次更新',
 };
 
 export const LATEST_VERSION = '1.3.1';
@@ -23,7 +24,7 @@ const UpdateNotifier = () => {
                 addToast(
                     `✨ 版本更新：${message}`,
                     'success',
-                    10000 // 顯示 10 秒，讓使用者有足夠時間閱讀
+                    10000 
                 );
             }
 

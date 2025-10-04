@@ -40,17 +40,17 @@ function App() {
         }
       >
         <Route path="/admin" element={<AdminHomePage />} />
-        <Route path="/admin/batch-record" element={<BatchRecordPage />} />
         <Route path="/admin/record/:userEmail" element={<RecordPage />} />
       </Route>
 
       <Route
         element={
           <AuthorizationGuard
-            allowedRoles={[UserRole.Admin, UserRole.SuperAdmin]}
+          allowedRoles={[UserRole.Admin, UserRole.SuperAdmin]}
           />
         }
       >
+        <Route path="/admin/batch-record" element={<BatchRecordPage />} />
         <Route path="/admin/dashboard" element={<AdminPage />} />
       </Route>
 

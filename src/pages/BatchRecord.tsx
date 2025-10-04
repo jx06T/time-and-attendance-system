@@ -147,7 +147,16 @@ function BatchRecordPage() {
         <div className="">
             <div className="bg-gray-800 p-6 pb-8 rounded-lg ">
                 <div className=' grid grid-cols-[0.6fr_1fr]  mb-4 h-18'>
-                    <h3 className="text-xl font-bold">批量打卡</h3>
+                    <div>
+                        <h3 className="text-xl font-bold">批量打卡</h3>
+                        <button
+                            onClick={fetchUsers}
+                            disabled={usersLoading}
+                            className=" block mt-1 text-left w-full cursor-pointer text-gray-400 underline underline-offset-2"
+                        >
+                            {usersLoading ? "更新中..." : "更新使用者列表"}
+                        </button>
+                    </div>
                     {cachedActionCount > 0 && (
                         <div className=" text-right">
                             <button
@@ -167,7 +176,7 @@ function BatchRecordPage() {
                                     </>
                                 )}
                             </button>
-                            <span className=' block mt-1 text-right w-full cursor-pointer text-gray-400 underline underline-offset-2' onClick={handleClearCache}>清除緩存</span>
+                            <span className=' block mt-1 text-right w-full cursor-pointer text-gray-400 underline underline-offset-2' onClick={handleClearCache}>清除待同步變更</span>
                         </div>
                     )}
                 </div>
