@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function googleUser() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function hasRole(role) {
+      return googleUser()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == role;
+    }
+
+    function isSuperAdmin() {
+      return hasRole('superadmin');
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || hasRole('admin');
+    }
+
+    function isStaff() {
+      return isAdmin() || hasRole('clocker');
+    }
+
+    function validRecord(recordId) {
+      return request.resource.data.userEmail is string
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && recordId == request.resource.data.userEmail + '_' + request.resource.data.date;
+    }
+
+    function clockerCreatesRecord() {
+      return hasRole('clocker')
+        && request.resource.data.keys().hasOnly([
+          'userEmail', 'date', 'checkIn', 'checkOut',
+          'checkInRecorderUid', 'checkOutRecorderUid'
+        ])
+        && request.resource.data.keys().hasAll([
+          'userEmail', 'date', 'checkIn', 'checkOut',
+          'checkInRecorderUid', 'checkOutRecorderUid'
+        ])
+        && request.resource.data.checkIn is timestamp
+        && request.resource.data.checkOut == null
+        && request.resource.data.checkInRecorderUid == request.auth.uid
+        && request.resource.data.checkOutRecorderUid == null;
+    }
+
+    function clockerUpdatesRecord() {
+      return hasRole('clocker') && (
+        (
+          resource.data.get('checkIn', null) == null
+          && request.resource.data.checkIn is timestamp
+          && request.resource.data.checkInRecorderUid == request.auth.uid
+          && request.resource.data.checkOut == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'checkIn', 'checkInRecorderUid', 'checkOut', 'checkOutRecorderUid'
+          ])
+        ) || (
+          resource.data.checkIn is timestamp
+          && resource.data.get('checkOut', null) == null
+          && request.resource.data.checkOut is timestamp
+          && request.resource.data.checkOutRecorderUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'checkOut', 'checkOutRecorderUid'
+          ])
+        )
+      );
+    }
+
+    match /users/{userId} {
+      // The login and profile pages query users by email before UID binding.
+      allow get, list: if isStaff()
+        || (googleUser() && resource.data.email == myEmail());
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (
+        googleUser()
+        && resource.data.email == myEmail()
+        && resource.data.get('uid', null) == null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid'])
+      );
+    }
+
+    match /admins/{uid} {
+      // The auth context reads its own role document, including when absent.
+      allow get: if (googleUser() && request.auth.uid == uid) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      // Bootstrap the first superadmin through trusted Cloud Shell credentials.
+      allow create, update: if isSuperAdmin() && uid != request.auth.uid
+        && request.resource.data.keys().hasOnly(['role'])
+        && request.resource.data.role in ['clocker', 'admin', 'superadmin'];
+      allow delete: if isSuperAdmin() && uid != request.auth.uid;
+    }
+
+    match /timeRecords/{recordId} {
+      allow get, list: if isStaff()
+        || (googleUser() && resource.data.userEmail == myEmail());
+      allow create: if validRecord(recordId)
+        && (isAdmin() || clockerCreatesRecord());
+      allow update: if validRecord(recordId)
+        && (isAdmin() || clockerUpdatesRecord());
+      allow delete: if isAdmin();
+    }
+
+    match /publicData/weeklyChampion {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+  }
+}
