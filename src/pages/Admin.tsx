@@ -5,12 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import RankingsReport from '../components/admin/RankingsReport';
 import ImportUsers from '../components/admin/ImportUsers';
 import UserReport from '../components/admin/UserReport';
+import ExportData from '../components/admin/ExportData';
 import PermissionsManager from '../components/admin/PermissionsManager';
 import { UserRole } from '../types';
 import { useUsers } from '../context/UsersContext';
 
 
-type AdminTabKey = 'rankings' | 'userReport' | 'import' | 'permissions';
+type AdminTabKey = 'rankings' | 'userReport' | 'import' | 'permissions' | 'export';
 interface AdminTab {
     key: AdminTabKey;
     label: string;
@@ -31,6 +32,7 @@ function AdminPage() {
         if (role === UserRole.SuperAdmin) {
             tabs.push({ key: 'import', label: '匯入使用者', component: ImportUsers });
             tabs.push({ key: 'permissions', label: '權限管理', component: PermissionsManager });
+            tabs.push({ key: 'export', label: '匯出統計', component: ExportData });
         }
         return tabs;
     }, [role]);

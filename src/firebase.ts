@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBhF_wvP7PR9NW-7v279etfKuO6C_6CmRI",
-    authDomain: "taas-jx.firebaseapp.com",
-    projectId: "taas-jx",
-    storageBucket: "taas-jx.firebasestorage.app",
-    messagingSenderId: "478343899254",
-    appId: "1:478343899254:web:f5774f9f2e7b36f06e1757",
-    measurementId: "G-PET62WMXXH"
+  apiKey: "AIzaSyBL2wqZ-Vj7vqejL23n5UL5cJ2yq2uKPBQ",
+  authDomain: "cksc-attendance.firebaseapp.com",
+  projectId: "cksc-attendance",
+  storageBucket: "cksc-attendance.firebasestorage.app",
+  messagingSenderId: "410076958022",
+  appId: "1:410076958022:web:8ddd7a629740a99ef8a947",
+  measurementId: "G-GP8DGYYMLF"
 };
 
 
