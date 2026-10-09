@@ -60,13 +60,13 @@ function Header() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between bg-brand-d/95 px-4 text-neutral shadow-md sm:px-8">
-      <div className="group relative">
+      <div className="group relative shrink-0">
         <Link to="/" className="text-xl font-bold group-hover:text-accent-li">打卡系統</Link>
         <div className="absolute -left-2 top-0 h-10 w-px bg-neutral group-hover:bg-accent-li" />
         <div className="absolute -bottom-1 -left-3 h-px w-28 bg-neutral group-hover:bg-accent-li" />
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-5">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-5">
         <nav className="hidden items-center gap-4 text-sm *:hover:text-accent-li md:flex">
           {renderNavLinks()}
           {!installed && <button type="button" onClick={openInstall} className="hover:text-accent-li">安裝 App</button>}
@@ -77,7 +77,12 @@ function Header() {
         ) : user ? (
           <>
             <div className="mx-1 hidden h-6 w-px bg-neutral md:block" />
-            <Link to="/profile" className="hidden max-w-36 truncate text-sm hover:text-accent-li md:block" title={user.displayName || user.email || undefined}>
+            <Link
+              to="/profile"
+              className="block max-w-20 min-w-0 truncate text-xs hover:text-accent-li sm:max-w-32 sm:text-sm md:max-w-36"
+              title={user.displayName || user.email || undefined}
+              aria-label={`前往 ${user.displayName || user.email} 的個人頁面`}
+            >
               {user.displayName || user.email}
             </Link>
             <button type="button" onClick={handleLogout} className="rounded border border-red-500 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-500/10">
