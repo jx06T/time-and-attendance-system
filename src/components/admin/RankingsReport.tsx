@@ -163,16 +163,7 @@ function RankingsReport() {
                 topFive: topFive,
                 updatedAt: Timestamp.now(),
                 weekStartDate: Timestamp.fromDate(weekStart),
-                filteredGradeLevel: selectedGradeLevel || null,
-
-                publishedFilters: { 
-                    gradeLevel: selectedGradeLevel,
-                    dayOfWeek: selectedDayOfWeek,
-                    minHours: minHours,
-                    maxHours: maxHours,
-                    searchTerm: searchTerm,
-                }
-            }, { merge: true });
+            });
 
             addToast("已成功發布!", "success");
 

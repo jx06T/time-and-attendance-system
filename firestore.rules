@@ -34,18 +34,47 @@ service cloud.firestore {
       return request.resource.data.userEmail is string
         && request.resource.data.date is string
         && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (request.resource.data.get('checkIn', null) == null
+          || request.resource.data.checkIn is timestamp)
+        && (request.resource.data.get('checkOut', null) == null
+          || request.resource.data.checkOut is timestamp)
         && recordId == request.resource.data.userEmail + '_' + request.resource.data.date;
+    }
+
+    function validEditor() {
+      return request.resource.data.lastEditedByUid == request.auth.uid
+        && request.resource.data.lastEditedAt == request.time;
+    }
+
+    function validRecorderOnCreate(field, recorderField) {
+      return (request.resource.data.get(field, null) == null
+          && request.resource.data.get(recorderField, null) == null)
+        || (request.resource.data.get(field, null) is timestamp
+          && request.resource.data.get(recorderField, null) == request.auth.uid);
+    }
+
+    function validRecorderOnUpdate(field, recorderField) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return !changed.hasAny([field, recorderField])
+        || (changed.hasAny([field]) && (
+          (request.resource.data.get(field, null) == null
+            && request.resource.data.get(recorderField, null) == null)
+          || (request.resource.data.get(field, null) is timestamp
+            && request.resource.data.get(recorderField, null) == request.auth.uid)
+        ));
     }
 
     function clockerCreatesRecord() {
       return hasRole('clocker')
         && request.resource.data.keys().hasOnly([
           'userEmail', 'date', 'checkIn', 'checkOut',
-          'checkInRecorderUid', 'checkOutRecorderUid'
+          'checkInRecorderUid', 'checkOutRecorderUid',
+          'lastEditedByUid', 'lastEditedAt'
         ])
         && request.resource.data.keys().hasAll([
           'userEmail', 'date', 'checkIn', 'checkOut',
-          'checkInRecorderUid', 'checkOutRecorderUid'
+          'checkInRecorderUid', 'checkOutRecorderUid',
+          'lastEditedByUid', 'lastEditedAt'
         ])
         && request.resource.data.checkIn is timestamp
         && request.resource.data.checkOut == null
@@ -57,11 +86,14 @@ service cloud.firestore {
       return hasRole('clocker') && (
         (
           resource.data.get('checkIn', null) == null
+          && resource.data.get('checkOut', null) == null
           && request.resource.data.checkIn is timestamp
           && request.resource.data.checkInRecorderUid == request.auth.uid
-          && request.resource.data.checkOut == null
+          && request.resource.data.get('checkOut', null) == null
+          && request.resource.data.get('checkOutRecorderUid', null) == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'checkIn', 'checkInRecorderUid', 'checkOut', 'checkOutRecorderUid'
+            'checkIn', 'checkInRecorderUid', 'checkOut', 'checkOutRecorderUid',
+            'lastEditedByUid', 'lastEditedAt'
           ])
         ) || (
           resource.data.checkIn is timestamp
@@ -69,10 +101,34 @@ service cloud.firestore {
           && request.resource.data.checkOut is timestamp
           && request.resource.data.checkOutRecorderUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'checkOut', 'checkOutRecorderUid'
+            'checkOut', 'checkOutRecorderUid', 'lastEditedByUid', 'lastEditedAt'
           ])
         )
       );
+    }
+
+    function validChampionItem(item) {
+      return item is map
+        && item.keys().hasOnly(['name', 'classId', 'percentage'])
+        && item.keys().hasAll(['name', 'classId', 'percentage'])
+        && item.name is string
+        && item.classId is string
+        && item.percentage is number;
+    }
+
+    function validChampion() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['topFive', 'updatedAt', 'weekStartDate'])
+        && data.keys().hasAll(['topFive'])
+        && data.topFive is list
+        && data.topFive.size() <= 5
+        && (data.topFive.size() < 1 || validChampionItem(data.topFive[0]))
+        && (data.topFive.size() < 2 || validChampionItem(data.topFive[1]))
+        && (data.topFive.size() < 3 || validChampionItem(data.topFive[2]))
+        && (data.topFive.size() < 4 || validChampionItem(data.topFive[3]))
+        && (data.topFive.size() < 5 || validChampionItem(data.topFive[4]))
+        && (data.get('updatedAt', null) == null || data.updatedAt is timestamp)
+        && (data.get('weekStartDate', null) == null || data.weekStartDate is timestamp);
     }
 
     match /users/{userId} {
@@ -103,17 +159,21 @@ service cloud.firestore {
     match /timeRecords/{recordId} {
       allow get, list: if isStaff()
         || (googleUser() && resource.data.userEmail == myEmail());
-      allow create: if validRecord(recordId)
+      allow create: if validRecord(recordId) && validEditor()
+        && validRecorderOnCreate('checkIn', 'checkInRecorderUid')
+        && validRecorderOnCreate('checkOut', 'checkOutRecorderUid')
         && (isAdmin() || clockerCreatesRecord());
-      allow update: if validRecord(recordId)
+      allow update: if validRecord(recordId) && validEditor()
+        && validRecorderOnUpdate('checkIn', 'checkInRecorderUid')
+        && validRecorderOnUpdate('checkOut', 'checkOutRecorderUid')
         && (isAdmin() || clockerUpdatesRecord());
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     match /publicData/weeklyChampion {
       allow get: if true;
       allow list: if false;
-      allow create, update: if isAdmin();
+      allow create, update: if isAdmin() && validChampion();
       allow delete: if false;
     }
   }

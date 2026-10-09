@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { doc, getDoc, setDoc, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TimeRecord, UserProfile, UserRole } from '../types';
 import { useToast } from '../hooks/useToast';
 import { formatTime, toLocalDateString } from '../utils/tools'
 import { useAuth } from '../context/AuthContext';
+import { useUsers } from '../context/UsersContext';
 
 const AdminRecordPage = () => {
     const { userEmail } = useParams<{ userEmail: string }>();
@@ -23,35 +24,38 @@ const AdminRecordPage = () => {
     const [notesInput, setNotesInput] = useState('');
 
     const { user, role } = useAuth();
+    const { pendingDatesByEmail } = useUsers();
 
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const [selectedDate, setSelectedDate] = useState<Date>(() => {
-        const dateParam = searchParams.get('date');
-        if ((role === UserRole.Admin || role === UserRole.SuperAdmin) && dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-            return new Date(dateParam + 'T00:00:00');
+    const dateParam = searchParams.get('date');
+    const selectedDate = useMemo(() => {
+        if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+            const parsed = new Date(dateParam + 'T00:00:00');
+            if (!Number.isNaN(parsed.getTime()) && toLocalDateString(parsed) === dateParam) return parsed;
         }
         return new Date();
-    });
+    }, [dateParam]);
 
     useEffect(() => {
         const dateStr = toLocalDateString(selectedDate);
-        if (searchParams.get('date') !== dateStr) {
-            setSearchParams({ date: dateStr }, { replace: true });
+        if (dateParam !== dateStr) {
+            setSearchParams(current => {
+                const next = new URLSearchParams(current);
+                next.set('date', dateStr);
+                return next;
+            }, { replace: true });
         }
-    }, [selectedDate, searchParams, setSearchParams]);
-
-    useEffect(() => {
-        const dateParam = searchParams.get('date');
-        if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-            if (dateParam !== toLocalDateString(selectedDate)) {
-                setSelectedDate(new Date(dateParam + 'T00:00:00'));
-            }
-        }
-    }, [searchParams]);
+    }, [dateParam, selectedDate, setSearchParams]);
 
 
     const isToday = toLocalDateString(selectedDate) === toLocalDateString(new Date());
+    const pendingDates = userEmail ? (pendingDatesByEmail.get(userEmail) ?? []) : [];
+    const selectDate = (date: string) => setSearchParams(current => {
+        const next = new URLSearchParams(current);
+        next.set('date', date);
+        return next;
+    });
 
     const fetchData = useCallback(async () => {
         if (!userEmail) {
@@ -87,8 +91,8 @@ const AdminRecordPage = () => {
             const recordDoc = recordSnapshot.docs[0];
             const recordData = recordDoc.data() as TimeRecord;
             setRecord({ id: recordDoc.id, ...recordData });
-            setCheckInInput(formatTime(recordData.checkIn));
-            setCheckOutInput(formatTime(recordData.checkOut));
+            setCheckInInput(recordData.checkIn ? formatTime(recordData.checkIn) : '');
+            setCheckOutInput(recordData.checkOut ? formatTime(recordData.checkOut) : '');
             setDeductionInput(String(recordData.deductionMinutes || 0));
             setNotesInput(recordData.notes || '');
         } else {
@@ -106,20 +110,15 @@ const AdminRecordPage = () => {
     }, [fetchData]);
 
     const handleSaveAllChanges = async () => {
-        if (!userEmail) return;
+        if (!userEmail || !user) return;
         setLoading(true);
         const dateStr = toLocalDateString(selectedDate);
         const recordDocRef = doc(db, 'timeRecords', `${userEmail}_${dateStr}`);
 
         const getTimestamp = (timeStr: string): Timestamp | null | undefined => {
-            if (!/^\d{2}(:\d{2})?$/.test(timeStr)) {
-                if (timeStr === '') return null;
-                // addToast(`時間格式錯誤: ${timeStr}，應為 HH:mm`, 'error');
-                return undefined;
-            }
-            const parts = timeStr.split(':');
-            const hours = Number(parts[0]);
-            const minutes = Number(parts[1]);
+            if (timeStr === '') return null;
+            if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeStr)) return undefined;
+            const [hours, minutes] = timeStr.split(':').map(Number);
             const date = new Date(selectedDate);
             date.setHours(hours, minutes, 0, 0);
             return Timestamp.fromDate(date);
@@ -127,32 +126,45 @@ const AdminRecordPage = () => {
 
         const checkInTimestamp = getTimestamp(checkInInput);
         const checkOutTimestamp = getTimestamp(checkOutInput);
+        if (checkInTimestamp === undefined || checkOutTimestamp === undefined) {
+            addToast('時間格式錯誤，請使用 HH:mm。', 'error');
+            setLoading(false);
+            return;
+        }
 
         const dataToSave: Partial<TimeRecord> = {
             userEmail,
             date: dateStr,
             deductionMinutes: Number(deductionInput) || 0,
             notes: notesInput,
-            checkInRecorderUid: user?.uid,
-            checkOutRecorderUid: user?.uid,
         };
 
-        if (checkInTimestamp !== undefined) dataToSave.checkIn = checkInTimestamp;
-        if (checkOutTimestamp !== undefined) dataToSave.checkOut = checkOutTimestamp;
+        if (checkInTimestamp !== undefined && checkInInput !== (record?.checkIn ? formatTime(record.checkIn) : '')) {
+            dataToSave.checkIn = checkInTimestamp;
+            dataToSave.checkInRecorderUid = checkInTimestamp ? user.uid : null;
+        }
+        if (checkOutTimestamp !== undefined && checkOutInput !== (record?.checkOut ? formatTime(record.checkOut) : '')) {
+            dataToSave.checkOut = checkOutTimestamp;
+            dataToSave.checkOutRecorderUid = checkOutTimestamp ? user.uid : null;
+        }
 
         try {
-            await setDoc(recordDocRef, dataToSave, { merge: true });
+            await setDoc(recordDocRef, {
+                ...dataToSave,
+                lastEditedByUid: user.uid,
+                lastEditedAt: serverTimestamp(),
+            }, { merge: true });
             addToast("紀錄已保存！", "success");
             fetchData();
-        } catch (error: any) {
-            addToast(`儲存失敗: ${error.message}`, 'error');
+        } catch (error: unknown) {
+            addToast(`儲存失敗: ${error instanceof Error ? error.message : String(error)}`, 'error');
         } finally {
             setLoading(false);
         }
     };
 
     const handleCheckInOutNow = async (type: 'checkIn' | 'checkOut') => {
-        if (!userEmail) return;
+        if (!userEmail || !user || toLocalDateString(selectedDate) !== toLocalDateString(new Date())) return;
         setLoading(true);
 
         const dateStr = toLocalDateString(selectedDate);
@@ -165,9 +177,11 @@ const AdminRecordPage = () => {
                     checkIn: nowTimestamp,
                     userEmail,
                     date: dateStr,
-                    checkInRecorderUid: user?.uid,
+                    checkInRecorderUid: user.uid,
                     checkOut: null,
-                    checkOutRecorderUid: null
+                    checkOutRecorderUid: null,
+                    lastEditedByUid: user.uid,
+                    lastEditedAt: serverTimestamp(),
                 }, { merge: true });
                 addToast("簽到成功！", "success");
             } else {
@@ -175,13 +189,15 @@ const AdminRecordPage = () => {
                     checkOut: nowTimestamp,
                     userEmail,
                     date: dateStr,
-                    checkOutRecorderUid: user?.uid,
+                    checkOutRecorderUid: user.uid,
+                    lastEditedByUid: user.uid,
+                    lastEditedAt: serverTimestamp(),
                 }, { merge: true });
                 addToast("簽退成功！", "success");
             }
             await fetchData();
-        } catch (error: any) {
-            addToast(`操作失敗: ${error.message}`, 'error');
+        } catch (error: unknown) {
+            addToast(`操作失敗: ${error instanceof Error ? error.message : String(error)}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -211,15 +227,13 @@ const AdminRecordPage = () => {
                         <h2 className="text-2xl font-bold">{userProfile.name}</h2>
                     </div>
                     <div className="relative overflow-hidden">
-                        <button
-                            onClick={() => {
-                                datePickerRef.current?.showPicker();
-                            }}
-                            className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
-                        >
-                            {isToday ? "今日" : toLocalDateString(selectedDate)}
-                        </button>
-                        {(role === UserRole.Admin || role === UserRole.SuperAdmin) &&
+                        {(role === UserRole.Admin || role === UserRole.SuperAdmin) ? <>
+                            <button
+                                onClick={() => datePickerRef.current?.showPicker()}
+                                className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded transition-colors hover:bg-gray-700 text-center"
+                            >
+                                {isToday ? "今日" : toLocalDateString(selectedDate)}
+                            </button>
                             <input
                                 onClick={() => {
                                     datePickerRef.current?.showPicker();
@@ -227,12 +241,32 @@ const AdminRecordPage = () => {
                                 type="date"
                                 ref={datePickerRef}
                                 value={toLocalDateString(selectedDate)}
-                                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                                onChange={(e) => selectDate(e.target.value)}
                                 className="absolute top-0 left-0 right-0 bottom-0 opacity-0 z-10 bg-red-50"
                             />
-                        }
+                        </> : <span className="border-2 border-accent-li text-accent-li font-bold py-2 px-4 rounded inline-block text-center">
+                            {isToday ? "今日" : toLocalDateString(selectedDate)}
+                        </span>}
                     </div>
                 </div>
+
+                {pendingDates.length > 1 && (
+                    <div className="mb-6 rounded-lg bg-gray-800 p-3">
+                        <p className="mb-2 text-sm text-gray-300">這位使用者有 {pendingDates.length} 天未簽退，請選擇紀錄日期：</p>
+                        <div className="flex flex-wrap gap-2">
+                            {pendingDates.map(date => (
+                                <button
+                                    key={date}
+                                    type="button"
+                                    onClick={() => selectDate(date)}
+                                    className={`rounded border px-3 py-1 text-sm ${date === toLocalDateString(selectedDate) ? 'border-accent-li text-accent-li' : 'border-gray-500 text-gray-200 hover:bg-gray-700'}`}
+                                >
+                                    {date}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {loading ? <div className="text-center p-8">正在載入紀錄...</div> : (
                     <div className="space-y-6">
@@ -246,10 +280,12 @@ const AdminRecordPage = () => {
                                 <p className="text-2xl font-mono mt-1">{formatTime(record?.checkOut) || '--:--'}</p>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center gap-4">
+                        {isToday ? <div className="flex justify-between items-center gap-4">
                             <button disabled={!!record?.checkIn} onClick={() => handleCheckInOutNow('checkIn')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700 ">立即簽到</button>
                             <button disabled={!record?.checkIn || !!record?.checkOut} onClick={() => handleCheckInOutNow('checkOut')} className="w-full border-2 border-accent-li text-accent-li disabled:border-gray-500 disabled:text-gray-500 font-bold py-2 px-4 rounded transition-colors not-disabled:hover:bg-gray-700">立即簽退</button>
-                        </div>
+                        </div> : <p className="text-sm text-center text-gray-400">
+                            這是歷史紀錄。請管理者補登或修改簽退時間。
+                        </p>}
                         {(role === UserRole.Admin || role === UserRole.SuperAdmin) &&
                             <div className="p-4 bg-gray-800 rounded-lg space-y-4 mt-16">
                                 <div className="grid grid-cols-2 gap-4 overflow-hidden">

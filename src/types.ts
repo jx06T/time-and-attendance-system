@@ -16,8 +16,10 @@ export interface TimeRecord {
     checkIn: Timestamp | null;
     checkOut: Timestamp | null;
     date: string; // YYYY-MM-DD
-    checkInRecorderUid?: string;
-    checkOutRecorderUid?: string;
+    checkInRecorderUid?: string | null;
+    checkOutRecorderUid?: string | null;
+    lastEditedByUid?: string;
+    lastEditedAt?: Timestamp;
     deductionMinutes?: number;
     notes?: string;
 }

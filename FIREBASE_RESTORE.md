@@ -118,7 +118,11 @@ jq -n \
 | --- | --- | --- |
 | `users` | Google Email 查詢、首次登入綁定 UID、管理者匯入 | 本人讀取與僅一次 UID 綁定；工作人員讀取；SuperAdmin 管理 |
 | `admins/{uid}` | 登入後查角色、權限管理 | 本人讀取角色；SuperAdmin 列表與管理他人角色 |
-| `timeRecords/{email}_{date}` | 個人紀錄、打卡、批次打卡、報表 | 本人讀取；工作人員讀取；Clocker 僅簽到簽退；Admin／SuperAdmin 編輯 |
-| `publicData/weeklyChampion` | 公開週榜、管理者發布 | 公開讀取；Admin／SuperAdmin 寫入 |
+| `timeRecords/{email}_{date}` | 個人紀錄、打卡、批次打卡、報表 | 本人讀取；工作人員讀取；Clocker 僅簽到簽退；Admin／SuperAdmin 編輯；寫入須記錄最後修改者與伺服器時間 |
+| `publicData/weeklyChampion` | 公開週榜、管理者發布 | 公開讀取；Admin／SuperAdmin 寫入，僅保存名次圖表所需欄位與發布日期，不保存實際工時或篩選條件 |
 
 `firestore.indexes.json` 為個人紀錄與月報表提供 `userEmail + date DESC`，並為今日已簽退監聽提供 `date + checkOut ASC`。其餘程式查詢使用 Firestore 自動單欄索引或等值查詢索引合併。
+
+`timeRecords` 的新寫入格式包含 `lastEditedByUid` 與 `lastEditedAt`。如果前端和規則同時升級，請先讓新版網站上線，再部署新版 Firestore 規則，並讓已開啟舊版頁面的使用者重新整理；舊版前端沒有這兩個欄位，會被新規則拒絕寫入。這兩欄只保留最後一次修改者；若需要不可變的每次修改歷程，應另建審計事件紀錄。
+
+舊版週榜文件若含 `publishedFilters` 或 `filteredGradeLevel`，新版規則不會自動刪除既有欄位。新版網站上線後，請由管理者重新發布一次週榜；新版發布會覆寫文件，只留下 `topFive`、`updatedAt` 與 `weekStartDate`。

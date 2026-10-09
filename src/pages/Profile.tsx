@@ -20,7 +20,8 @@ function ProfilePage() {
       const fetchData = async () => {
         setLoading(true);
 
-        const userQuery = query(collection(db, 'users'), where('email', '==', user.email));
+        const normalizedEmail = user.email.toLowerCase();
+        const userQuery = query(collection(db, 'users'), where('email', '==', normalizedEmail));
         const userSnapshot = await getDocs(userQuery);
         if (!userSnapshot.empty) {
           const userDoc = userSnapshot.docs[0];
@@ -29,7 +30,7 @@ function ProfilePage() {
 
         const recordsQuery = query(
           collection(db, 'timeRecords'),
-          where('userEmail', '==', user.email),
+          where('userEmail', '==', normalizedEmail),
           orderBy('date', 'desc'),
           limit(25)
         );
@@ -110,7 +111,7 @@ function ProfilePage() {
           <div>
             <h2 className='text-xl font-bold text-neutral mb-4 text-left'>QR Code</h2>
             <div className=' flex flex-col items-center'>
-              <UserProfileQRCode value={user.email} />
+              <UserProfileQRCode value={user.email.toLowerCase()} />
             </div>
           </div>
         }

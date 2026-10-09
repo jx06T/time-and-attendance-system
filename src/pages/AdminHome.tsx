@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { TimeRecord, UserProfile } from '../types';
+import { TimeRecord } from '../types';
 
 import NumericKeypad from '../components/NumericKeypad';
 import QRCodeScannerModal from '../components/QRCodeScannerModal';
@@ -18,7 +18,7 @@ import { StreamlineScannerSolid, CiLoading, IcRoundSync } from '../assets/Icons'
 const AdminHomePage = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { allUsers, fetchUsers, lastUpdated, loading: usersLoading, pendingEmails, pendingLoading } = useUsers();
+  const { allUsers, fetchUsers, lastUpdated, loading: usersLoading, pendingEmails, pendingDatesByEmail, pendingLoading } = useUsers();
   const { user: adminUser } = useAuth();
 
   const [input, setInput] = useState('');
@@ -29,14 +29,14 @@ const AdminHomePage = () => {
     try {
       await fetchUsers();
       // addToast("使用者列表已更新！", "success");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("更新使用者列表失敗:", error);
-      addToast(`更新使用者列表失敗: ${error.message}`, "error");
+      addToast(`更新使用者列表失敗: ${error instanceof Error ? error.message : String(error)}`, "error");
     }
   };
 
   const filteredAndSortedUsers = useMemo(() => {
-    let filtered = allUsers;
+    let filtered = [...allUsers];
     if (input) {
       const cleanedInput = input.trim().toLowerCase();
       if (cleanedInput) {
@@ -62,9 +62,15 @@ const AdminHomePage = () => {
     return filtered;
   }, [input, allUsers, pendingEmails]);
 
+  const todayDate = toLocalDateString(new Date());
+  const recordUrlFor = (email: string, date?: string) =>
+    `/admin/record/${encodeURIComponent(email)}${date ? `?date=${date}` : ''}`;
+  const pendingRecordUrlFor = (email: string) =>
+    recordUrlFor(email, pendingDatesByEmail.get(email)?.[0]);
+
   const handleConfirm = () => {
     if (filteredAndSortedUsers.length === 1) {
-      navigate(`/admin/record/${filteredAndSortedUsers[0].email}`);
+      navigate(pendingRecordUrlFor(filteredAndSortedUsers[0].email));
     } else if (filteredAndSortedUsers.length === 0) {
       addToast("無使用者符合條件", "error");
     } else {
@@ -86,7 +92,9 @@ const AdminHomePage = () => {
       if (parts[1] === "r" && parts.length >= 3) {
         scannedEmail = parts[2];
       }
-    } catch (e) { }
+    } catch {
+      scannedEmail = null;
+    }
 
     if (!scannedEmail) {
       addToast("QR Code 資料格式錯誤", "error");
@@ -148,14 +156,14 @@ const AdminHomePage = () => {
           const nowTimestamp = Timestamp.now();
           try {
             if (action === 'checkIn') {
-              await setDoc(recordDocRef, { checkIn: nowTimestamp, checkInRecorderUid: adminUser.uid ,checkOut: null, checkOutRecorderUid: null, userEmail: targetUser.email, date: dateStr}, { merge: true });
+              await setDoc(recordDocRef, { checkIn: nowTimestamp, checkInRecorderUid: adminUser.uid, checkOut: null, checkOutRecorderUid: null, userEmail: targetUser.email, date: dateStr, lastEditedByUid: adminUser.uid, lastEditedAt: serverTimestamp() }, { merge: true });
               addToast(`${targetUser.name} 簽到成功！`, "success");
             } else {
-              await setDoc(recordDocRef, { checkOut: nowTimestamp, checkOutRecorderUid: adminUser.uid }, { merge: true });
+              await setDoc(recordDocRef, { checkOut: nowTimestamp, checkOutRecorderUid: adminUser.uid, lastEditedByUid: adminUser.uid, lastEditedAt: serverTimestamp() }, { merge: true });
               addToast(`${targetUser.name} 簽退成功！`, "success");
             }
-          } catch (error: any) {
-            addToast(`操作失敗: ${error.message}`, 'error');
+          } catch (error: unknown) {
+            addToast(`操作失敗: ${error instanceof Error ? error.message : String(error)}`, 'error');
           } finally {
             processingRef.current = false;
           }
@@ -166,8 +174,8 @@ const AdminHomePage = () => {
         }
       });
 
-    } catch (error: any) {
-      addToast(`查詢紀錄失敗: ${error.message}`, "error");
+    } catch (error: unknown) {
+      addToast(`查詢紀錄失敗: ${error instanceof Error ? error.message : String(error)}`, "error");
       processingRef.current = false;
     }
   }, [allUsers, addToast, adminUser, navigate]);
@@ -210,23 +218,40 @@ const AdminHomePage = () => {
           <ul className="space-y-3 ">
             {filteredAndSortedUsers.map(user => {
               const isPending = pendingEmails.has(user.email);
+              const pendingDates = pendingDatesByEmail.get(user.email) ?? [];
+              const pendingDate = pendingDates[0];
+              const hasHistoricalPendingRecord = pendingDate && pendingDate !== todayDate;
               return (
                 <li key={user.id}
-                  onClick={() => navigate(`/admin/record/${user.email}`)}
-                  className={`p-3 px-5 bg-gray-800  flex justify-between items-center cursor-pointer hover:bg-gray-700 transition-all duration-200 rounded-md ${isPending ? 'border-2 border-accent  ' : 'border-2 border-transparent'}`}
+                  className={`bg-gray-800 rounded-md ${isPending ? 'border-2 border-accent' : 'border-2 border-transparent'}`}
                 >
-                  <div>
-                    <p className="text-base text-gray-400 font-mono">{user.classId} {user.seatNo}</p>
-                    <p className="font-bold text-xl text-neutral">{user.name}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {isPending ?
-                      <span className="text-xs font-bold text-accent-li border-2 border-accent-li px-2 py-1 rounded-full">
-                        未簽退
-                      </span> :
-                      <span className="text-accent-li text-2xl font-bold">&rarr;</span>
-                    }
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(pendingRecordUrlFor(user.email))}
+                    className="w-full p-3 px-5 flex justify-between items-center text-left cursor-pointer hover:bg-gray-700 transition-colors rounded-md focus-visible:outline-2 focus-visible:outline-accent-li"
+                  >
+                    <div>
+                      <p className="text-base text-gray-400 font-mono">{user.classId} {user.seatNo}</p>
+                      <p className="font-bold text-xl text-neutral">{user.name}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {isPending ?
+                        <span className="text-xs font-bold text-accent-li border-2 border-accent-li px-2 py-1 rounded-full">
+                          未簽退{pendingDate ? ` · ${pendingDate}` : ''}{pendingDates.length > 1 ? `（${pendingDates.length} 筆）` : ''}
+                        </span> :
+                        <span className="text-accent-li text-2xl font-bold">&rarr;</span>
+                      }
+                    </div>
+                  </button>
+                  {hasHistoricalPendingRecord && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(recordUrlFor(user.email, todayDate))}
+                      className="w-full px-5 pb-3 text-right text-sm text-accent-li hover:underline focus-visible:outline-2 focus-visible:outline-accent-li"
+                    >
+                      前往今日打卡 &rarr;
+                    </button>
+                  )}
                 </li>
               )
             })}

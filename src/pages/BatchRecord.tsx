@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { doc, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { useState, useMemo, useCallback } from 'react';
+import { doc, Timestamp, writeBatch, serverTimestamp } from 'firebase/firestore';
+import type { FieldValue } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import { useUsers } from '../context/UsersContext';
@@ -24,7 +25,7 @@ interface CachedAction {
 type CachedActions = Record<string, CachedAction>; // Key 是 user.email
 
 function BatchRecordPage() {
-    const { allUsers, pendingEmails, checkedOutTodayEmails, loading: usersLoading, fetchUsers } = useUsers();
+    const { allUsers, pendingDatesByEmail, checkedOutTodayEmails, loading: usersLoading, fetchUsers } = useUsers();
     const { user: adminUser } = useAuth();
     const { addToast } = useToast();
 
@@ -33,10 +34,11 @@ function BatchRecordPage() {
 
     const [cachedActions, setCachedActions] = useLocalStorage<CachedActions>('batch-record-actions', {});
     const cachedActionCount = Object.keys(cachedActions).length;
+    const todayDate = toLocalDateString(new Date());
 
     const filteredAndSortedUsers = useMemo(() => {
         const cleanedInput = searchTerm.trim().toLowerCase();
-        let filtered = allUsers;
+        let filtered = [...allUsers];
 
         if (cleanedInput) {
             filtered = allUsers.filter(user =>
@@ -94,7 +96,7 @@ function BatchRecordPage() {
                 const actionData = cachedActions[email];
                 const recordDocRef = doc(db, 'timeRecords', `${email}_${dateStr}`);
 
-                const dataToSync: any = {};
+                const dataToSync: Record<string, string | Timestamp | FieldValue | null> = {};
 
                 if (actionData.checkIn) {
                     dataToSync.userEmail = email;
@@ -115,6 +117,8 @@ function BatchRecordPage() {
 
                 // 使用 set with merge，可以安全地創建新紀錄或更新現有紀錄
                 if (Object.keys(dataToSync).length > 0) {
+                    dataToSync.lastEditedByUid = adminUser.uid;
+                    dataToSync.lastEditedAt = serverTimestamp();
                     batch.set(recordDocRef, dataToSync, { merge: true });
                 }
             }
@@ -122,9 +126,9 @@ function BatchRecordPage() {
             await batch.commit();
             addToast(`成功同步 ${cachedActionCount} 筆用戶記錄！`, "success", 5000);
             setCachedActions({});
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("同步失敗：", error);
-            addToast(`同步失敗： ${error.message}`, 'error', 10000);
+            addToast(`同步失敗： ${error instanceof Error ? error.message : String(error)}`, 'error', 10000);
         } finally {
             setIsSyncing(false);
         }
@@ -208,17 +212,13 @@ function BatchRecordPage() {
                                         const cachedAction = cachedActions[user.email];
 
                                         // 結合伺服器和本地緩存的狀態來決定最終狀態
-                                        const hasServerCheckIn = pendingEmails.has(user.email) || checkedOutTodayEmails.has(user.email);
+                                        const hasServerCheckIn = (pendingDatesByEmail.get(user.email)?.includes(todayDate) ?? false) || checkedOutTodayEmails.has(user.email);
                                         const hasServerCheckOut = checkedOutTodayEmails.has(user.email);
 
                                         const effectiveCheckIn = cachedAction?.checkIn || hasServerCheckIn;
-                                        const effectiveCheckOut = cachedAction?.checkOut || hasServerCheckOut;
-
-                                        // 如果本地取消了簽到，但還留著簽退，這是不合邏輯的，簽退也應被視為無效
-                                        const logicalCheckOut = effectiveCheckIn && effectiveCheckOut;
-
-                                        const checkInDisabled = !!effectiveCheckIn;
-                                        const checkOutDisabled = !effectiveCheckIn || !!logicalCheckOut;
+                                        // 伺服器已簽到或簽退時，不允許本地按鈕覆蓋該狀態。
+                                        const checkInDisabled = hasServerCheckIn;
+                                        const checkOutDisabled = !effectiveCheckIn || hasServerCheckOut;
 
                                         // 判斷是否高亮：如果本地緩存的簽到/簽退狀態與按鈕的禁用狀態不符，則表示有待辦事項
                                         const isCheckInPending = cachedAction?.checkIn && !hasServerCheckIn;
@@ -237,14 +237,14 @@ function BatchRecordPage() {
                                                     <div className="flex justify-center items-center gap-2">
                                                         <button
                                                             onClick={() => handleLocalCheckInOut(user, 'checkIn')}
-                                                            // disabled={!checkOutDisabled}
+                                                            disabled={checkInDisabled}
                                                             className={`px-3 py-1 border-2 rounded transition-colors ${checkInDisabled ? "border-gray-600 text-gray-400 opacity-50 cursor-not-allowed" : "border-accent-li text-accent-li"}`}
                                                         >
                                                             簽到
                                                         </button>
                                                         <button
                                                             onClick={() => handleLocalCheckInOut(user, 'checkOut')}
-                                                            disabled={!checkInDisabled}
+                                                            disabled={checkOutDisabled}
                                                             className={`px-3 py-1 border-2 rounded transition-colors ${checkOutDisabled ? "border-gray-600 text-gray-400 opacity-50 cursor-not-allowed" : "border-accent-li text-accent-li"}`}
                                                         >
                                                             簽退

@@ -36,7 +36,7 @@ function ImportUsers() {
         setPreviewData([]);
         setFileName(file.name);
 
-        Papa.parse(file, {
+        Papa.parse<Record<string, string>>(file, {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
@@ -50,7 +50,7 @@ function ImportUsers() {
         });
     };
 
-    const generatePreview = async (csvData: any[]) => {
+    const generatePreview = async (csvData: Record<string, string>[]) => {
         if (!csvData.length) {
             addToast('CSV 文件為空或格式錯誤。', 'error');
             return;
@@ -100,10 +100,16 @@ function ImportUsers() {
             allUsers.forEach(user => emailToIdMap.set(user.email.toLowerCase(), user.id));
 
             previewData.forEach(user => {
-                const { status, previewId, ...userData } = user;
+                const userData = {
+                    studentId: user.studentId,
+                    email: user.email,
+                    classId: user.classId,
+                    seatNo: user.seatNo,
+                    name: user.name,
+                };
                 const existingUserId = emailToIdMap.get(user.email!);
 
-                if (status === 'update' && existingUserId) {
+                if (user.status === 'update' && existingUserId) {
                     const userDocRef = doc(db, "users", existingUserId);
                     batch.set(userDocRef, userData, { merge: true });
                 } else {
@@ -116,8 +122,8 @@ function ImportUsers() {
             addToast(`成功處理 ${previewData.length} 筆資料！`);
             setPreviewData([]);
             setFileName('');
-        } catch (err: any) {
-            addToast(`寫入資料庫時發生錯誤: ${err.message}`, 'error');
+        } catch (err: unknown) {
+            addToast(`寫入資料庫時發生錯誤: ${err instanceof Error ? err.message : String(err)}`, 'error');
         } finally {
             setIsProcessing(false);
         }
@@ -145,7 +151,7 @@ function ImportUsers() {
                         const userDocRef = doc(db, "users", existingDoc.id);
                         await setDoc(userDocRef, {
                             ...manualForm,
-                            email: email
+                            email: email.toLowerCase()
                         }, { merge: true });
 
                         addToast(`成功更新使用者: ${name}`, 'success');
@@ -161,8 +167,8 @@ function ImportUsers() {
             addToast(`成功新增使用者: ${name}`);
             setManualForm(initialFormState);
             setIsManualFormExpanded(false);
-        } catch (err: any) {
-            addToast(`新增失敗: ${err.message}`, 'error');
+        } catch (err: unknown) {
+            addToast(`新增失敗: ${err instanceof Error ? err.message : String(err)}`, 'error');
         } finally {
             setManualSubmitLoading(false);
         }

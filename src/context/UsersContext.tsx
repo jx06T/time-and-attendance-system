@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { UserProfile, UserRole, TimeRecord } from '../types';
-import useLocalStorage from '../hooks/useLocalStorage';
+import { UserProfile, UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { toLocalDateString } from '../utils/tools';
@@ -10,6 +9,7 @@ import { toLocalDateString } from '../utils/tools';
 interface UsersContextType {
     allUsers: UserProfile[];
     pendingEmails: Set<string>;
+    pendingDatesByEmail: Map<string, string[]>;
     checkedOutTodayEmails: Set<string>; 
     loading: boolean;
     pendingLoading: boolean;
@@ -23,14 +23,24 @@ const UsersContext = createContext<UsersContextType | undefined>(undefined);
 export function UsersProvider({ children }: { children: React.ReactNode }) {
     const { role } = useAuth();
     const { addToast } = useToast();
-    const [allUsers, setAllUsers] = useLocalStorage<UserProfile[]>('allUsers', []);
-    const [lastUpdated, setLastUpdated] = useLocalStorage<string | null>('usersLastUpdated', null);
+    const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+    const [lastUpdated, setLastUpdated] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const [pendingEmails, setPendingEmails] = useState<Set<string>>(new Set());
+    const [pendingDatesByEmail, setPendingDatesByEmail] = useState<Map<string, string[]>>(new Map());
     const [checkedOutTodayEmails, setCheckedOutTodayEmails] = useState<Set<string>>(new Set());
     const [pendingLoading, setPendingLoading] = useState(true);
-    const isInitialMount = useRef(true);
+    const [todayDate, setTodayDate] = useState(() => toLocalDateString(new Date()));
+
+    useEffect(() => {
+        window.localStorage.removeItem('allUsers');
+        window.localStorage.removeItem('usersLastUpdated');
+        const timer = window.setInterval(() => {
+            setTodayDate(toLocalDateString(new Date()));
+        }, 60_000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     const fetchUsers = useCallback(async () => {
         if (role === UserRole.User || role === UserRole.Visitor) {
@@ -65,6 +75,11 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (role === UserRole.User || role === UserRole.Visitor) {
+            setAllUsers([]);
+            setLastUpdated(null);
+            setPendingEmails(new Set());
+            setPendingDatesByEmail(new Map());
+            setCheckedOutTodayEmails(new Set());
             setPendingLoading(false);
             return;
         }
@@ -73,25 +88,32 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
         const pendingQuery = query(collection(db, 'timeRecords'), where('checkOut', '==', null));
         const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
             const currentPendingEmails = new Set<string>();
+            const datesByEmail = new Map<string, Set<string>>();
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
-                if (data.checkIn) {
+                if (data.checkIn && typeof data.userEmail === 'string') {
                     currentPendingEmails.add(data.userEmail);
+                    if (typeof data.date === 'string' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(data.date)) {
+                        if (!datesByEmail.has(data.userEmail)) datesByEmail.set(data.userEmail, new Set());
+                        datesByEmail.get(data.userEmail)!.add(data.date);
+                    }
                 }
             });
             setPendingEmails(currentPendingEmails);
-            if (pendingLoading) setPendingLoading(false);
+            setPendingDatesByEmail(new Map(
+                Array.from(datesByEmail, ([email, dates]) => [email, Array.from(dates).sort()])
+            ));
+            setPendingLoading(false);
         }, (error) => {
             console.error("監聽未簽退記錄失敗:", error);
             addToast("監聽未簽退記錄失敗", "error");
-            if (pendingLoading) setPendingLoading(false);
+            setPendingLoading(false);
         });
 
         // --- 監聽器 2: 監聽今天已簽退的人 (date == today, checkOut != null) ---
-        const todayStr = toLocalDateString(new Date());
         const completedQuery = query(
             collection(db, 'timeRecords'),
-            where('date', '==', todayStr),
+            where('date', '==', todayDate),
             where('checkOut', '!=', null)
         );
         const unsubscribeCompleted = onSnapshot(completedQuery, (snapshot) => {
@@ -110,13 +132,13 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
             unsubscribePending();
             unsubscribeCompleted();
         };
-    }, [role, addToast, pendingLoading]);
+    }, [role, addToast, todayDate]);
 
     const getUserByEmail = useCallback((email: string): UserProfile | undefined => {
         return allUsers.find(user => user.email.toLowerCase() === email.toLowerCase());
     }, [allUsers]);
 
-    const value = { allUsers, pendingEmails, checkedOutTodayEmails, loading, pendingLoading, lastUpdated, fetchUsers, getUserByEmail };
+    const value = { allUsers, pendingEmails, pendingDatesByEmail, checkedOutTodayEmails, loading, pendingLoading, lastUpdated, fetchUsers, getUserByEmail };
 
     return (
         <UsersContext.Provider value={value}>
