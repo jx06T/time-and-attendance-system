@@ -7,11 +7,12 @@ import ImportUsers from '../components/admin/ImportUsers';
 import UserReport from '../components/admin/UserReport';
 import ExportData from '../components/admin/ExportData';
 import PermissionsManager from '../components/admin/PermissionsManager';
+import Overview from '../components/admin/Overview';
 import { UserRole } from '../types';
 import { useUsers } from '../context/UsersContext';
 
 
-type AdminTabKey = 'rankings' | 'userReport' | 'import' | 'permissions' | 'export';
+type AdminTabKey = 'overview' | 'rankings' | 'userReport' | 'import' | 'permissions' | 'export';
 interface AdminTab {
     key: AdminTabKey;
     label: string;
@@ -26,6 +27,7 @@ function AdminPage() {
     const { fetchUsers } = useUsers();
     const availableTabs = useMemo((): AdminTab[] => {
         const tabs: AdminTab[] = [
+            { key: 'overview', label: '總預覽', component: Overview },
             { key: 'rankings', label: '查看週報表', component: RankingsReport },
             { key: 'userReport', label: '查看單人報表', component: UserReport },
         ];

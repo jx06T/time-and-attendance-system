@@ -17,10 +17,10 @@ function ProfilePage() {
 
   useEffect(() => {
     if (!authLoading && user && user.email) {
+      const normalizedEmail = user.email.toLowerCase();
       const fetchData = async () => {
         setLoading(true);
 
-        const normalizedEmail = user.email.toLowerCase();
         const userQuery = query(collection(db, 'users'), where('email', '==', normalizedEmail));
         const userSnapshot = await getDocs(userQuery);
         if (!userSnapshot.empty) {

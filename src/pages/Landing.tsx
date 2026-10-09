@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import { UserRole } from '../types';
 import TopThreeChart from '../components/TopThreeChart';
+import PwaInstallSuggestion from '../components/PwaInstallSuggestion';
 
 
 const LandingPage = () => {
@@ -56,6 +57,7 @@ const LandingPage = () => {
             </p>
 
             {renderAction()}
+            <PwaInstallSuggestion />
             <div className=' mt-20 text-left space-y-9 mb-24'>
                 <div>
                     <h1 className=' text-2xl font-bold mb-2'>

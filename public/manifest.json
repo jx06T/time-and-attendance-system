@@ -1,6 +1,7 @@
 {
   "short_name": "打卡系統",
   "name": "現代化場佈打卡系統",
+  "id": "/admin",
   "description": "一個簡單的打卡系統，支援 google 帳號綁定，指定日期/使用者產生報表，權限管理等功能",
   "icons": [
     {
@@ -16,7 +17,7 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/admin",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#02151c",
   "background_color": "#02151c",

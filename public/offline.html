@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#02151c" />
+  <title>需要網路連線｜場佈打卡系統</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #02151c; color: #f5f5f5; font-family: system-ui, sans-serif; }
+    main { max-width: 26rem; padding: 2rem; text-align: center; }
+    h1 { font-size: 1.6rem; }
+    p { color: #d1d5db; line-height: 1.7; }
+    button { margin-top: 1rem; padding: .7rem 1.4rem; border: 1px solid #d491ff; border-radius: .5rem; background: transparent; color: #d491ff; font: inherit; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>目前沒有網路連線</h1>
+    <p>打卡與報表需要連線到 Firebase。連線恢復後，請重新載入頁面再操作。</p>
+    <button onclick="location.reload()">重新載入</button>
+  </main>
+</body>
+</html>

@@ -7,6 +7,15 @@ import { UsersProvider } from './context/UsersContext.tsx';
 import { ToastProvider } from './hooks/useToast.tsx'
 import { AuthProvider } from './context/AuthContext';
 import UpdateNotifier from './components/UpdateNotifier'; 
+import { PwaInstallProvider } from './context/PwaInstallContext';
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(error => {
+      console.error('Service worker registration failed:', error);
+    });
+  });
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -14,8 +23,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <AuthProvider>
           <UsersProvider>
-            <UpdateNotifier />
-            <App />
+            <PwaInstallProvider>
+              <UpdateNotifier />
+              <App />
+            </PwaInstallProvider>
           </UsersProvider>
         </AuthProvider>
       </ToastProvider>
