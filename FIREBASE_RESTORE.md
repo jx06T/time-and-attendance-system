@@ -22,7 +22,7 @@
    | `users/<你的 Firebase Auth UID>` | `email`: 你的 Google 登入 Email（小寫）；`uid`: 你的 Firebase Auth UID；`name`: 姓名；`classId`: 班級；`seatNo`: 座號；`studentId`: 實際學號或空字串 |
    | `admins/<你的 Firebase Auth UID>` | `role`: `superadmin` |
 
-4. 重新用 Google 登入網站。成功進入管理介面後，可用 CSV 匯入其他使用者。首頁週榜發布功能需要 `publicData/weeklyChampion` 文件；在 Firestore Console 建立它，任意放一個初始化欄位（例如 `initialized: true`，類型為 `boolean`）即可，首次發布會寫入正式的 `topFive`。
+4. 重新用 Google 登入網站。成功進入管理介面後，可用 CSV 匯入其他使用者。首次發布週榜時，程式會自動建立 `publicData/weeklyChampion` 文件。
 
 以上兩筆初始化文件需由擁有 Firebase 專案管理權限的帳號在 Console 建立。**不要把 `users` 的 Email 填成別人的，也不要把 `admins` 的文件 ID 填成 Email。**現有歷史打卡資料若已刪除，仍需從備份還原。
 
@@ -108,15 +108,7 @@ jq -n \
       "https://firestore.googleapis.com/v1/projects/cksc-attendance/databases/(default)/documents/users?documentId=${ADMIN_UID}"
 ```
 
-首頁週榜程式使用 `updateDoc`，因此空資料庫還需建立 `publicData/weeklyChampion`。下列 POST 若文件已存在會失敗，不會覆蓋現有週榜：
-
-```bash
-curl --fail-with-body -sS -X POST \
-  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-  -H 'Content-Type: application/json' \
-  --data '{"fields":{"topFive":{"arrayValue":{}}}}' \
-  'https://firestore.googleapis.com/v1/projects/cksc-attendance/databases/(default)/documents/publicData?documentId=weeklyChampion'
-```
+週榜文件 `publicData/weeklyChampion` 會在第一次發布時自動建立，無須預先透過 API 建立。
 
 若 Firebase 專案或 Auth 使用者被重建，新的 UID 可能不同於舊 `users.uid`。核對使用者身份後，才應修正相應的 `users.uid` 與 `admins/{uid}`。規則、索引與 Authentication 提供者設定均無法還原已刪除的業務資料。
 

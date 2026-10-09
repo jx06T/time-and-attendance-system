@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, getDocs, Timestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, setDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TimeRecord, UserProfile } from '../../types';
 import { useUsers } from '../../context/UsersContext';
@@ -159,7 +159,7 @@ function RankingsReport() {
             }));
 
             const championDocRef = doc(db, 'publicData', 'weeklyChampion');
-            await updateDoc(championDocRef, {
+            await setDoc(championDocRef, {
                 topFive: topFive,
                 updatedAt: Timestamp.now(),
                 weekStartDate: Timestamp.fromDate(weekStart),
@@ -172,12 +172,12 @@ function RankingsReport() {
                     maxHours: maxHours,
                     searchTerm: searchTerm,
                 }
-            });
+            }, { merge: true });
 
             addToast("已成功發布!", "success");
 
-        } catch (error: any) {
-            addToast(`發布失敗: ${error.message}`, "error");
+        } catch (error: unknown) {
+            addToast(`發布失敗: ${error instanceof Error ? error.message : String(error)}`, "error");
         } finally {
             setIsPublishing(false);
         }
