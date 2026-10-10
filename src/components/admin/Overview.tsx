@@ -52,10 +52,10 @@ function GroupPanel({ title, subtitle, stats, accent }: {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Metric label="本週總工時" value={`${hourFormat.format(stats.totalHours)} h`} detail="已簽退淨工時" />
         <Metric label="人均週工時" value={`${hourFormat.format(stats.averageWeeklyHours)} h`} detail="總工時 ÷ 到場人數" />
-        <Metric label="平均日工時" value={`${hourFormat.format(stats.averageDailyHours)} h`} detail="總工時 ÷ 已簽退人日" />
-        <Metric label="平均到場日" value={`${hourFormat.format(stats.averageAttendanceDays)} 日`} detail="到場人日 ÷ 到場人數" />
+        <Metric label="平均日工時" value={`${hourFormat.format(stats.averageDailyHours)} h`} detail="總工時 ÷ 已簽退的到場次數" />
+        <Metric label="平均到場日" value={`${hourFormat.format(stats.averageAttendanceDays)} 日`} detail="到場總次數 ÷ 到場人數" />
       </div>
-      <p className="mt-4 text-xs text-gray-400">未到場 {stats.absentCount} 人 · 到場 {stats.attendanceDays} 人日{stats.pendingRecordCount > 0 ? ` · 未簽退 ${stats.pendingRecordCount} 筆` : ''}</p>
+      <p className="mt-4 text-xs text-gray-400">未到場 {stats.absentCount} 人 · 到場 {stats.attendanceDays} 次（每人每天最多算 1 次）{stats.pendingRecordCount > 0 ? ` · 未簽退 ${stats.pendingRecordCount} 筆` : ''}</p>
     </section>
   );
 }
