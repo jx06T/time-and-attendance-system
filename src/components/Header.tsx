@@ -50,6 +50,7 @@ function Header() {
         {(role === UserRole.Admin || role === UserRole.SuperAdmin) && (
           <>
             <Link onClick={closeMenu} to="/admin/batch-record">大量打卡</Link>
+            <Link onClick={closeMenu} to="/admin/line-import">LINE 匯入</Link>
             <Link onClick={closeMenu} to="/admin/dashboard">管理面板</Link>
           </>
         )}

@@ -22,6 +22,14 @@ export interface TimeRecord {
     lastEditedAt?: Timestamp;
     deductionMinutes?: number;
     notes?: string;
+    // LINE 匯入：匯入過的所有簽到／簽退事件，以及其中算進 deductionMinutes 的空檔分鐘數
+    importedEvents?: ImportedEvent[];
+    importGapMinutes?: number;
+}
+
+export interface ImportedEvent {
+    action: 'in' | 'out';
+    at: Timestamp;
 }
 
 export enum UserRole {

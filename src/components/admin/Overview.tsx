@@ -197,10 +197,11 @@ function Overview() {
 
           <section className="rounded-xl border border-white/10 bg-gray-800/90 p-5 sm:p-6">
             <h3 className="text-lg font-bold">接著查看</h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Link to="/admin/dashboard#rankings" className="rounded-lg border border-gray-600 p-4 hover:border-accent-li hover:bg-gray-700/50">團隊週報表 <span className="float-right text-accent-li">→</span></Link>
               <Link to="/admin/dashboard#userReport" className="rounded-lg border border-gray-600 p-4 hover:border-accent-li hover:bg-gray-700/50">個人月報表 <span className="float-right text-accent-li">→</span></Link>
               <Link to="/admin/batch-record" className="rounded-lg border border-gray-600 p-4 hover:border-accent-li hover:bg-gray-700/50">批次打卡 <span className="float-right text-accent-li">→</span></Link>
+              <Link to="/admin/line-import" className="rounded-lg border border-gray-600 p-4 hover:border-accent-li hover:bg-gray-700/50">LINE 匯入 <span className="float-right text-accent-li">→</span></Link>
             </div>
           </section>
         </>

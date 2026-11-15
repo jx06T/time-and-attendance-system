@@ -9,6 +9,7 @@ import AdminPage from './pages/Admin';
 import Layout from './layout/Layout';
 import NotFoundPage from './pages/NotFound';
 import BatchRecordPage from './pages/BatchRecord';
+import LineImportPage from './pages/LineImport';
 
 import { UserRole } from './types';
 import { AuthorizationGuard } from './components/AuthorizationGuard';
@@ -51,6 +52,7 @@ function App() {
         }
       >
         <Route path="/admin/batch-record" element={<BatchRecordPage />} />
+        <Route path="/admin/line-import" element={<LineImportPage />} />
         <Route path="/admin/dashboard" element={<AdminPage />} />
       </Route>
 
