@@ -20,6 +20,7 @@ export interface ParsedEvent {
     backfill: boolean; // 訊息裡有寫時間或日期（補登）
     sentAt: string;    // 發訊時間 YYYY-MM-DD HH:mm
     source: string;    // 原始訊息
+    note?: string;     // 例如「錢」當作簽到
 }
 
 export interface ReviewItem {
@@ -53,7 +54,11 @@ const DATE_LINE = /^(\d{4})[./-](\d{1,2})[./-](\d{1,2})(?:\s*[(（]?\s*(?:星期
 const MSG_LINE = /^(?:(上午|下午)\s*)?(\d{1,2}):(\d{2})\s+(.*)$/;
 // 發訊者：學號（中間可能有空格）＋ 姓名，後面接訊息
 const SENDER = /^(\d[\d ]{2,6}?)\s*([^\s\d@]{2,5}?)(?:\s+(.*))?$/;
-const IGNORED_MESSAGE = /已收回訊息$|^\S+\s*(?:加入|離開|退出)|^\S+\s*已將.*(?:加入|移除)/;
+// 系統訊息：「王小明加入聊天」「王小明已收回訊息」（名字和動作中間沒有空白）
+const IGNORED_MESSAGE = /已收回訊息$|^\S+?(?:加入|離開|退出)(?:聊天|群組|社群)?\S*$|^\S+\s*已將.*(?:加入|移除)/;
+// 一個字的錯字／注音：「謙」「錢」→ 簽，「推」「ㄊㄨㄟ」→ 退
+const TYPO_IN = /^(?:謙|錢|千|ㄑㄧㄢ[ˉˊˇˋ˙]?)$/;
+const TYPO_OUT = /^(?:推|腿|ㄊㄨㄟ[ˉˊˇˋ˙]?)$/;
 
 const CN_DIGIT: Record<string, number> = { 零: 0, 〇: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
 function cnNumber(s: string): number {
@@ -67,9 +72,13 @@ function cnNumber(s: string): number {
 const NUM = '(?:\\d{1,2}|[零〇一二兩三四五六七八九十]{1,3})';
 // 姓名：2–4 個中文字，但不能把「簽到」「下午」這類關鍵字吃進去
 const NAME = '(?:(?!簽|補|昨|前天|今天|今日|早上|上午|中午|下午|晚上|點|半|和|跟|我|幫|代)[\\u4e00-\\u9fff]){2,4}';
-const ACTION = /已?(補)?\s*簽\s*(到|退)了?/;
-const ACTION_G = /已?補?\s*簽\s*[到退]了?/g;
-const FILLER = /[#@,、，;；:.\-\s]|我|了|已|的|一下|有|在|補|幫|代|和|跟|喔|哦|囉|啦|唷|嗎/g;
+// 簽到、簽退、補簽，也接受只打「簽」（= 簽到）、「退」、「離開」，以及有寫時間的「走」
+const ACTION = /已?(補)?\s*簽\s*(到|退)?了?|(退)|(離開|走)/;
+const ACTION_G = /已?補?\s*簽\s*[到退]?了?|退|離開|走/g;
+const KEYWORD = /簽|退|離開|走/;
+// 「忘了簽」「忘記請人代簽了」是在講之前的事，不是動作
+const CHATTER = /忘[^簽退]{0,6}簽\s*[到退]?了?|(?:請人)?代簽了?(?!\s*[到退])/g;
+const FILLER = /[#@,、，;；:.\-\s]|我|了|已|的|一下|有|在|補|幫|代|和|跟|喔|哦|囉|啦|唷|嗎|剛剛|剛才|剛|中途|先/g;
 
 export function normalize(s: string): string {
     return s
@@ -91,6 +100,7 @@ function parsePerson(s: string): Person | null {
 
 interface Segment {
     action: Action | null;
+    agoMinutes: number | null; // 「20分鐘前」
     day: number | null;
     monthDay: [number, number] | null;
     hour: number | null;
@@ -107,10 +117,21 @@ function parseSegment(text: string, senderName: string): Segment {
     const take = (re: RegExp, fn: (m: (string | undefined)[]) => void) => {
         t = t.replace(re, (...m: (string | undefined)[]) => { fn(m); return ' '; });
     };
-    const r: Segment = { action: null, day: null, monthDay: null, hour: null, minute: 0, period: null, people: [], withSelf: false, unclear: false };
+    const r: Segment = { action: null, agoMinutes: null, day: null, monthDay: null, hour: null, minute: 0, period: null, people: [], withSelf: false, unclear: false };
 
-    take(ACTION, m => { r.action = m[2] === '到' ? 'in' : 'out'; });
+    let weak = false; // 「走」只有寫了時間才算
+    take(ACTION, m => {
+        r.action = m[2] === '退' || m[3] || m[4] ? 'out' : 'in';
+        weak = m[4] === '走';
+    });
     take(/我(?:和|跟)|(?:和|跟)我/g, () => { r.withSelf = true; });
+    take(/我(?!\s*(?:幫|代))/g, () => { r.withSelf = true; });
+
+    // @提及：「@王小明 @建班廖浥玹 簽」是幫他們簽
+    take(/@\s*([^\s@]+)/g, m => {
+        const raw = m[1] ?? '';
+        r.people.push(parsePerson(raw) ?? { code: '', name: raw });
+    });
 
     // 對象：括號裡、「幫／代」後面、或學號（＋姓名）
     take(/\(([^)]*)\)/g, m => {
@@ -134,15 +155,22 @@ function parseSegment(text: string, senderName: string): Segment {
     take(/今天|今日/, () => { r.day = 0; });
     take(/(?<!\d)(\d{1,2})\s*(?:\/|月)\s*(\d{1,2})\s*[日號号]?/, m => { r.monthDay = [Number(m[1]), Number(m[2])]; });
 
-    // 時間：17:30、5.30、5：30、5點半、五點半、1.（只有小時）
+    // 相對時間：20分鐘前、半小時前、1小時前
+    take(new RegExp(`(半|${NUM})\\s*個?\\s*(分鐘?|分钟|小時|小时|鐘頭)\\s*前`), m => {
+        const n = m[1] === '半' ? 0.5 : cnNumber(m[1] ?? '');
+        r.agoMinutes = Math.round(m[2]?.startsWith('分') ? n : n * 60);
+    });
+
+    // 時間：17:30、5.30、5：30、5點半、五點半、9.（只有小時）
     take(/早上|上午|中午|下午|晚上/, m => { r.period = m[0] ?? null; });
-    take(new RegExp(`(?<!\\d)(\\d{1,2})\\s*[:.]\\s*(\\d{2})(?!\\d)|(${NUM})\\s*[點点時]\\s*(半|${NUM})?\\s*分?|(?<![\\d.])(\\d{1,2})\\s*\\.(?=\\s*$)`), m => {
+    take(new RegExp(`(?<!\\d)(\\d{1,2})\\s*[:.]\\s*(\\d{2})(?!\\d)|(${NUM})\\s*[點点時]\\s*(半|${NUM})?\\s*分?|(?<![\\d.])(\\d{1,2})\\s*\\.(?!\\s*\\d)`), m => {
         if (m[1] !== undefined) { r.hour = Number(m[1]); r.minute = Number(m[2]); }
         else if (m[3] !== undefined) { r.hour = cnNumber(m[3]); r.minute = m[4] === '半' ? 30 : m[4] ? cnNumber(m[4]) : 0; }
         else { r.hour = Number(m[5]); }
     });
 
     t = t.split(senderName).join(' ');
+    if (weak && r.hour === null && r.agoMinutes === null) return { ...r, action: null }; // 「走了嗎」之類的聊天
     if (t.replace(FILLER, '')) r.unclear = true;
     return r;
 }
@@ -167,19 +195,21 @@ interface Message { date: string; minute: number; head: string; lines: string[] 
 function splitMessages(text: string, startDate: string): Message[] {
     const messages: Message[] = [];
     let date = startDate;
-    for (const raw of text.replace(/\t/g, ' ').split(/\r?\n/)) {
+    for (const raw of text.split(/\r?\n/)) {
         const line = raw.trim();
-        const d = line.match(DATE_LINE);
+        const d = line.replace(/\t/g, ' ').match(DATE_LINE);
         if (d) { date = `${d[1]}-${pad(d[2])}-${pad(d[3])}`; continue; }
         const m = line.match(MSG_LINE);
-        if (m) {
+        // 「17:30 簽退」是上一則訊息的補登，不是新訊息
+        const continuation = m && messages.length && /^(?:已?補?簽[到退]?了?|退)(?:\s|$)/.test(m[4]);
+        if (m && !continuation) {
             let h = Number(m[2]);
             if (m[1] === '下午' && h < 12) h += 12;
             if (m[1] === '上午' && h === 12) h = 0;
             messages.push({ date, minute: toMin(h, Number(m[3])), head: m[4], lines: [] });
             continue;
         }
-        if (line && messages.length) messages[messages.length - 1].lines.push(line); // 多行訊息
+        if (line && messages.length) messages[messages.length - 1].lines.push(line.replace(/\t/g, ' ')); // 多行訊息
     }
     return messages;
 }
@@ -213,6 +243,10 @@ function resolveSegment(seg: Segment, msg: Message, code: string, name: string):
         const candidates = hours.map(x => toMin(x, mi)).filter(x => x < 1440 && (!sameDay || x <= msg.minute));
         if (!candidates.length) return { error: '補登的時間比發訊時間還晚' };
         minute = Math.max(...candidates);
+    } else if (seg.agoMinutes !== null && sameDay) {
+        backfill = true;
+        minute = msg.minute - seg.agoMinutes;
+        if (minute < 0) return { error: '補登的時間跨到前一天' };
     } else if (!sameDay) {
         return { error: '補登別天但沒有寫時間' };
     }
@@ -237,6 +271,16 @@ function resolveSegment(seg: Segment, msg: Message, code: string, name: string):
     };
 }
 
+// 發訊者：LINE 匯出的 .txt 用 tab 分隔；貼上的文字用空白，暱稱可能是「學號姓名」或只有姓名／暱稱
+function parseSender(head: string): { code: string; name: string; rest: string } | null {
+    const s = head.match(SENDER);
+    if (s) return { code: s[1].replace(/\s/g, ''), name: s[2], rest: s[3] ?? '' };
+    const parts = head.includes('\t') ? head.split('\t') : head.split(/\s+/);
+    const name = parts[0].trim();
+    if (!name) return null;
+    return { code: '', name, rest: parts.slice(1).join(' ') };
+}
+
 /**
  * 解析 LINE 聊天文字。
  * @param startDate 文字開頭還沒出現日期列時，用這一天
@@ -250,28 +294,39 @@ export function parseLineText(text: string, startDate: string): ParseResult {
     for (const msg of messages) {
         const sentAt = `${msg.date} ${formatMinute(msg.minute)}`;
         if (IGNORED_MESSAGE.test(msg.head)) { ignoredCount++; continue; }
-        const s = msg.head.match(SENDER);
-        const allText = [msg.head, ...msg.lines].join(' ／ ');
-        if (!s) {
-            if (/簽\s*[到退]/.test(normalize(allText))) review.push({ reason: '看不出是誰傳的（暱稱要是「學號姓名」）', text: allText, sentAt });
+        const allText = [msg.head, ...msg.lines].join(' ／ ').replace(/\t/g, ' ');
+        const sender = parseSender(msg.head);
+        if (!sender) {
+            if (KEYWORD.test(normalize(allText))) review.push({ reason: '看不出是誰傳的', text: allText, sentAt });
             continue;
         }
-        const code = s[1].replace(/\s/g, '');
-        const name = s[2];
-        const lines = [s[3] ?? '', ...msg.lines].map(normalize).filter(Boolean);
+        const { code, name } = sender;
+        const lines = [sender.rest, ...msg.lines].map(normalize).filter(Boolean);
 
         const found: ParsedEvent[] = [];
         const errors: string[] = [];
         let unclear = false;
-        for (const line of lines) {
-            if (!/簽\s*[到退]/.test(line)) continue;
-            for (const part of splitCommands(line)) {
-                const seg = parseSegment(part, name);
-                if (!seg.action) continue;
-                if (seg.unclear) { unclear = true; continue; }
+        let pending = ''; // 「@王小明 @李大華 我」換行再「簽到」
+        for (let line of lines) {
+            let note: string | undefined;
+            if (TYPO_IN.test(line)) { note = `「${line}」當作簽到`; line = '簽'; }
+            else if (TYPO_OUT.test(line)) { note = `「${line}」當作簽退`; line = '退'; }
+            const stripped = line.replace(CHATTER, ' ').trim();
+            // 拿掉之後還有動作就用拿掉的（「退剛忘了簽」）；只剩「忘記簽到」就整句交給人看
+            if (KEYWORD.test(stripped) || !/簽\s*[到退]/.test(line)) line = stripped;
+            if (!KEYWORD.test(line)) {
+                if (/^(?:(?:@\s*[^\s@]+|我)\s*)+$/.test(line)) pending += `${line} `;
+                continue;
+            }
+            line = pending + line;
+            pending = '';
+            const segs = splitCommands(line).map(part => parseSegment(part, name)).filter(seg => seg.action);
+            // 一行裡只要有一段看不懂，整行都不採用（例如「退打退」）
+            if (segs.some(seg => seg.unclear)) { unclear = true; continue; }
+            for (const seg of segs) {
                 const res = resolveSegment(seg, msg, code, name);
                 if ('error' in res) { errors.push(res.error); continue; }
-                found.push(...res.events.map(e => ({ ...e, source: allText })));
+                found.push(...res.events.map(e => ({ ...e, source: allText, ...(note ? { note } : {}) })));
             }
         }
         events.push(...found);
@@ -292,7 +347,13 @@ export type MatchResult =
 
 const rosterCode = (u: RosterUser) => `${String(u.classId).trim()}${String(u.seatNo).trim().padStart(2, '0')}`;
 
-export function matchUser(code: string, name: string, roster: RosterUser[]): MatchResult {
+/** @param aliases 管理員手動指定的對應：「學號姓名」或暱稱 → email */
+export function matchUser(code: string, name: string, roster: RosterUser[], aliases: Record<string, string> = {}): MatchResult {
+    const aliased = aliases[`${code}${name}`];
+    if (aliased) {
+        const u = roster.find(x => x.email === aliased);
+        if (u) return { user: u, warning: `「${code}${name}」手動對應到 ${u.name}` };
+    }
     const byCode = code.length >= 5 ? roster.filter(u => rosterCode(u) === code) : [];
     const byName = name ? roster.filter(u => u.name.trim() === name) : [];
     const label = `${code}${name}`;
@@ -310,17 +371,23 @@ export function matchUser(code: string, name: string, roster: RosterUser[]): Mat
         const candidates = sameClass.length ? sameClass : byName;
         if (candidates.length === 1) {
             const u = candidates[0];
-            const warning = !code ? '訊息只有姓名' : code.length < 5 ? '學號不完整，用姓名對到' : `學號不符（名冊是 ${rosterCode(u)}）`;
+            // 暱稱只有姓名（沒有學號）且名冊只有一位同名的，不用特別提醒
+            const warning = !code ? undefined : code.length < 5 ? '學號不完整，用姓名對到' : `學號不符（名冊是 ${rosterCode(u)}）`;
             return { user: u, warning };
         }
         return { error: `${label}：名冊裡有同名的人，請手動處理` };
+    }
+    // 暱稱裡有名冊上的姓名，例如「建班廖浥玹」
+    if (!code && name) {
+        const inside = roster.filter(u => u.name.trim().length >= 2 && name.includes(u.name.trim()));
+        if (inside.length === 1) return { user: inside[0], warning: `暱稱「${name}」對到 ${inside[0].name}` };
     }
     return { error: `${label}：名冊裡找不到這個人` };
 }
 
 // ---------- 一個人一天的紀錄 ----------
 
-export interface DayEvent { action: Action; minute: number }
+export interface DayEvent { action: Action; minute: number; explicit?: boolean } // explicit：訊息裡有寫時間
 
 export interface DayResult {
     sessions: [number | null, number | null][];
@@ -332,10 +399,13 @@ export interface DayResult {
 }
 
 export function dedupeEvents(events: DayEvent[]): DayEvent[] {
-    const seen = new Set<string>();
-    return events
-        .filter(e => { const k = `${e.action}${e.minute}`; if (seen.has(k)) return false; seen.add(k); return true; })
-        .sort((a, b) => a.minute - b.minute || (a.action === 'in' ? -1 : 1));
+    const map = new Map<string, DayEvent>();
+    for (const e of events) {
+        const k = `${e.action}${e.minute}`;
+        const prev = map.get(k);
+        map.set(k, { action: e.action, minute: e.minute, ...(prev?.explicit || e.explicit ? { explicit: true } : {}) });
+    }
+    return [...map.values()].sort((a, b) => a.minute - b.minute || (a.action === 'in' ? -1 : 1));
 }
 
 /** 同一人同一天可能有好幾段：簽到取最早、簽退取最晚，中間的空檔另外算。 */
@@ -345,20 +415,36 @@ export function buildDay(events: DayEvent[]): DayResult {
     const warnings: string[] = [];
     const blocking: string[] = [];
     let open: number | null = null;
+    let openExplicit = false;
+    let lastOutExplicit = false;
 
     for (const e of sorted) {
         if (e.action === 'in') {
-            if (open !== null) warnings.push(`${formatMinute(open)} 簽到後沒有簽退又在 ${formatMinute(e.minute)} 簽到，採用較早的`);
-            else open = e.minute;
+            if (open === null) { open = e.minute; openExplicit = !!e.explicit; }
+            else if (e.explicit && !openExplicit && e.minute - open <= 60) {
+                warnings.push(`${formatMinute(open)} 簽到後又補登 ${formatMinute(e.minute)} 簽到，採用補登的時間`);
+                open = e.minute;
+                openExplicit = true;
+            } else warnings.push(`${formatMinute(open)} 簽到後沒有簽退又在 ${formatMinute(e.minute)} 簽到，採用較早的`);
         } else if (open !== null) {
             sessions.push([open, e.minute]);
             open = null;
+            lastOutExplicit = !!e.explicit;
         } else if (sessions.length && sessions[sessions.length - 1][1] !== null) {
+            // 連續兩次簽退：有寫時間的（補登）優先，否則採用較晚的
             const last = sessions[sessions.length - 1];
-            warnings.push(`${formatMinute(last[1])} 之後又在 ${formatMinute(e.minute)} 簽退，採用較晚的`);
-            last[1] = e.minute;
+            if (lastOutExplicit && !e.explicit) {
+                warnings.push(`${formatMinute(e.minute)} 的簽退和補登的 ${formatMinute(last[1])} 重複，採用補登的時間`);
+            } else {
+                warnings.push(e.explicit && !lastOutExplicit
+                    ? `${formatMinute(last[1])} 簽退後又補登 ${formatMinute(e.minute)} 簽退，採用補登的時間`
+                    : `${formatMinute(last[1])} 之後又在 ${formatMinute(e.minute)} 簽退，採用較晚的`);
+                last[1] = e.minute;
+                lastOutExplicit = !!e.explicit;
+            }
         } else {
             sessions.push([null, e.minute]);
+            lastOutExplicit = !!e.explicit;
         }
     }
     if (open !== null) sessions.push([open, null]);

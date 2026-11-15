@@ -51,6 +51,15 @@ const minuteOf = (ts: Timestamp) => {
 const timestampOf = (date: string, minute: number) => Timestamp.fromDate(new Date(`${date}T${formatMinute(minute)}:00`));
 const sameTime = (a: Timestamp | null | undefined, b: Timestamp | null) => (a ? a.toMillis() : null) === (b ? b.toMillis() : null);
 
+// 暱稱 → 名冊的對應只是這台電腦的方便設定，存不了也沒關係
+const ALIAS_KEY = 'lineImportAliases';
+const loadAliases = (): Record<string, string> => {
+    try { return JSON.parse(localStorage.getItem(ALIAS_KEY) ?? '{}') ?? {}; } catch { return {}; }
+};
+const saveAliases = (aliases: Record<string, string>) => {
+    try { localStorage.setItem(ALIAS_KEY, JSON.stringify(aliases)); } catch { /* 忽略 */ }
+};
+
 function LineImportPage() {
     const { allUsers, loading: usersLoading, fetchUsers } = useUsers();
     const { user: adminUser } = useAuth();
@@ -62,6 +71,7 @@ function LineImportPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
     const [showFormat, setShowFormat] = useState(false);
+    const [aliases, setAliases] = useState<Record<string, string>>(loadAliases);
 
     useEffect(() => {
         document.title = '場佈打卡系統 | LINE 匯入';
@@ -80,7 +90,15 @@ function LineImportPage() {
         setAnalysis(null);
     };
 
-    const analyze = async () => {
+    const setAlias = (label: string, email: string) => {
+        const next = { ...aliases };
+        if (email) next[label] = email; else delete next[label];
+        setAliases(next);
+        saveAliases(next);
+        analyze(next);
+    };
+
+    const analyze = async (aliasMap = aliases) => {
         if (!text.trim()) return;
         if (!roster.length) {
             addToast('使用者名冊還沒載入，請先按「更新使用者列表」。', 'error');
@@ -96,7 +114,7 @@ function LineImportPage() {
             const cache = new Map<string, ReturnType<typeof matchUser>>();
             for (const e of parsed.events) {
                 const who = `${e.code}|${e.name}`;
-                if (!cache.has(who)) cache.set(who, matchUser(e.code, e.name, roster));
+                if (!cache.has(who)) cache.set(who, matchUser(e.code, e.name, roster, aliasMap));
                 const match = cache.get(who)!;
                 if ('error' in match) {
                     const u = unmatchedMap.get(who) ?? { label: `${e.code}${e.name}`, reason: match.error, count: 0, sample: e.source };
@@ -106,8 +124,9 @@ function LineImportPage() {
                 }
                 const key = `${match.user.email}_${e.date}`;
                 const g = groups.get(key) ?? { email: match.user.email, date: e.date, events: [], notes: new Set<string>() };
-                g.events.push({ action: e.action, minute: e.minute });
+                g.events.push({ action: e.action, minute: e.minute, ...(e.backfill ? { explicit: true } : {}) });
                 if (match.warning) g.notes.add(match.warning);
+                if (e.note) g.notes.add(`${formatMinute(e.minute)} ${e.note}`);
                 if (e.proxy) g.notes.add(`${formatMinute(e.minute)} 由 ${e.sender} 代簽`);
                 if (e.backfill) g.notes.add(`${formatMinute(e.minute)} ${e.action === 'in' ? '簽到' : '簽退'}是補登（${e.sentAt} 傳）`);
                 groups.set(key, g);
@@ -125,7 +144,7 @@ function LineImportPage() {
             const rows: Row[] = [];
             for (const [key, g] of groups) {
                 const ex = existing.get(key);
-                const stored: DayEvent[] = (ex?.importedEvents ?? []).map(e => ({ action: e.action, minute: minuteOf(e.at) }));
+                const stored: DayEvent[] = (ex?.importedEvents ?? []).map(e => ({ action: e.action, minute: minuteOf(e.at), ...(e.explicit ? { explicit: true } : {}) }));
                 const seen = new Set(stored.map(e => `${e.action}${e.minute}`));
                 const lo = ex?.checkIn ? minuteOf(ex.checkIn) : -Infinity;
                 const hi = ex?.checkOut ? minuteOf(ex.checkOut) : Infinity;
@@ -189,7 +208,7 @@ function LineImportPage() {
                         date: r.date,
                         deductionMinutes: r.deduction,
                         importGapMinutes: r.day.gapMinutes,
-                        importedEvents: r.importedEvents.map((e): ImportedEvent => ({ action: e.action, at: timestampOf(r.date, e.minute) })),
+                        importedEvents: r.importedEvents.map((e): ImportedEvent => ({ action: e.action, at: timestampOf(r.date, e.minute), ...(e.explicit ? { explicit: true } : {}) })),
                         lastEditedByUid: adminUser.uid,
                         lastEditedAt: serverTimestamp(),
                     };
@@ -260,7 +279,7 @@ function LineImportPage() {
                 {showFormat && (
                     <div className="rounded border border-gray-600 bg-gray-900 p-4 text-sm">
                         <pre className="whitespace-pre-wrap font-sans">{LINE_FORMAT_ANNOUNCEMENT}</pre>
-                        <p className="mt-3 text-gray-400">程式也看得懂：5.30、5點半、下午5點、昨天、#簽到、签到、在訊息裡寫學號、一則訊息同時寫簽到和簽退等寫法。</p>
+                        <p className="mt-3 text-gray-400">程式也看得懂：只打「簽」「退」、5.30退、5點半、20分鐘前簽、昨天、@某人 簽（代簽）、签到、謙／錢／推等錯字、在訊息裡寫學號、一則訊息同時寫簽到和簽退等寫法。暱稱不是本名的人，可以在「名冊對不到」手動對應。</p>
                         <button type="button" onClick={copyFormat} className="mt-3 px-3 py-1 border-2 border-accent-li text-accent-li rounded cursor-pointer">複製公告</button>
                     </div>
                 )}
@@ -283,7 +302,7 @@ function LineImportPage() {
                     </label>
                     <button
                         type="button"
-                        onClick={analyze}
+                        onClick={() => analyze()}
                         disabled={busy || !text.trim()}
                         className="ml-auto px-4 py-1 border-2 border-accent-li text-accent-li font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
@@ -313,11 +332,45 @@ function LineImportPage() {
                     {analysis.unmatched.length > 0 && (
                         <div className="bg-gray-800 p-4 rounded-lg border border-red-600/60">
                             <h4 className="font-bold text-red-300">名冊對不到（{analysis.unmatched.length}）</h4>
-                            <ul className="space-y-1 text-sm mt-2">
+                            <p className="text-xs text-gray-400">暱稱不是本名的，選擇他是誰就會重新解析（這台電腦會記住）。</p>
+                            <ul className="space-y-2 text-sm mt-2">
                                 {analysis.unmatched.map(u => (
-                                    <li key={u.label}><span className="text-red-300">{u.reason}</span>（{u.count} 筆）<span className="text-gray-400">例：{u.sample}</span></li>
+                                    <li key={u.label} className="flex flex-wrap items-center gap-2">
+                                        <span><span className="text-red-300">{u.reason}</span>（{u.count} 筆）<span className="text-gray-400">例：{u.sample}</span></span>
+                                        <select
+                                            value=""
+                                            disabled={busy}
+                                            onChange={e => setAlias(u.label, e.target.value)}
+                                            className="p-1 bg-gray-700 border border-gray-600 rounded text-white text-xs"
+                                        >
+                                            <option value="">對應到…</option>
+                                            {[...allUsers].sort((a, b) => labelOf(a.email).localeCompare(labelOf(b.email))).map(x => (
+                                                <option key={x.email} value={x.email}>{labelOf(x.email)}</option>
+                                            ))}
+                                        </select>
+                                    </li>
                                 ))}
                             </ul>
+                        </div>
+                    )}
+
+                    {Object.keys(aliases).length > 0 && (
+                        <div className="bg-gray-800 p-4 rounded-lg text-sm">
+                            <h4 className="font-bold">手動對應的暱稱</h4>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {Object.entries(aliases).map(([label, email]) => (
+                                    <button
+                                        key={label}
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => setAlias(label, '')}
+                                        className="px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 cursor-pointer"
+                                        title="取消這個對應"
+                                    >
+                                        {label} → {labelOf(email)} ✕
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
 

@@ -30,6 +30,7 @@ export interface TimeRecord {
 export interface ImportedEvent {
     action: 'in' | 'out';
     at: Timestamp;
+    explicit?: boolean; // 訊息裡有寫時間（補登），重複簽退時優先採用
 }
 
 export enum UserRole {
